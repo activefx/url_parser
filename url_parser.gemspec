@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["mattsolt@gmail.com"]
   spec.summary       = %q{Combine PostRank-URI, Domainatrix, and other Ruby url parsing libraries into a common interface.}
   spec.description   = %q{Uses PostRank-URI to clean, Addressable to break into components, and Domainatrix to determine domain and subdomain.}
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/activefx/url_parser"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 10"
   spec.add_development_dependency "rspec", "~> 3.0"
 
-  spec.add_dependency "domainatrix", "~> 0.0.11"
-  spec.add_dependency "postrank-uri", "~> 1.0.18"
+  spec.add_dependency "domainatrix", ">= 0.0.11"
+  spec.add_dependency "postrank-uri", "~> 1.0"
   spec.add_dependency "addressable", "~> 2.3"
 end
