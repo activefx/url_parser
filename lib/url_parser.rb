@@ -35,6 +35,17 @@ module UrlParser
 
   class Base
 
+    # https://secure.wikimedia.org/wikipedia/en/wiki/URI_scheme
+    MAJOR_SCHEMES = [
+      'file', 'ftp', 'gopher', 'h323', 'hdl', 'http', 'https', 'imap', 'magnet',
+      'mailto', 'mms', 'news', 'nntp', 'prospero', 'rsync', 'rtsp', 'rtspu',
+      'sftp', 'shttp', 'sip', 'sips', 'snews', 'svn', 'svn+ssh', 'telnet',
+      'wais',
+      # Unofficial schemes
+      'aim', 'callto', 'cvs', 'facetime', 'feed', 'git', 'gtalk', 'irc', 'ircs',
+      'irc6', 'itms', 'mms', 'msnim', 'skype', 'ssh', 'smb', 'svn', 'ymsg', 'mvn'
+    ]
+
     DEFAULT_SCHEMES = [
       'http', 'https', 'ftp', 'mailto', 'file', 'ssh', 'feed',
       'cvs', 'git', 'mvn', 'nntp', 'shttp', 'svn'
@@ -55,19 +66,51 @@ module UrlParser
 
     def uri
       tag_errors do
-        @uri ||= URI.parse(url) rescue nil
+        @uri ||= Addressable::URI.parse(url) rescue nil
       end
     end
 
-    def values
-      uri ? uri.instance_values : {}
+    def scheme
+      uri.scheme if uri
+    end
+
+    def user
+      uri.user if uri
+    end
+
+    def password
+      uri.password if uri
+    end
+
+    def host
+      uri.host if uri
+    end
+
+    def port
+      uri.port if uri
+    end
+
+    def path
+      uri.path if uri
+    end
+
+    def query
+      uri.query if uri
+    end
+
+    def fragment
+      uri.fragment if uri
+    end
+
+    def query_values(options = {})
+      uri ? uri.query_values(options).to_h : {}
     end
 
     def valid?
       return true if domain == 'localhost'
       return false if uri.nil?
-      return false unless schemes.include? uri.scheme
-      return false unless uri.host =~ /\./
+      return false unless schemes.include?(scheme)
+      return false unless host =~ /\./
       true
     end
 

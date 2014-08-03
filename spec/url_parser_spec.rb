@@ -55,7 +55,7 @@ describe UrlParser do
   context "#uri" do
 
     it "returns a parsed uri" do
-      expect(UrlParser.new('http://example.com').uri).to be_a URI
+      expect(UrlParser.new('http://example.com').uri).to be_a Addressable::URI
     end
 
   end
