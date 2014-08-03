@@ -50,6 +50,25 @@ describe UrlParser do
       }.to raise_error UrlParser::Error
     end
 
+    context "options" do
+
+      context ":preserve" do
+
+        let(:link) { 'link.to?a=b&utm_source=FeedBurner#stuff' }
+
+        it "is false by default" do
+          expect(parser.url).not_to eq parser.original_url
+        end
+
+        it "does not clean the url when true" do
+          parser = UrlParser.new(link, preserve: true)
+          expect(parser.url).to eq parser.original_url
+        end
+
+      end
+
+    end
+
   end
 
   context "#uri" do
@@ -80,6 +99,16 @@ describe UrlParser do
 
     it "returns true for localhost" do
       expect(UrlParser.new('localhost:5000')).to be_valid
+    end
+
+  end
+
+  context "#original_url" do
+
+    let(:link) { 'link.to?a=b&utm_source=FeedBurner#stuff' }
+
+    it "preserves the url input" do
+      expect(parser.original_url).to eq link
     end
 
   end

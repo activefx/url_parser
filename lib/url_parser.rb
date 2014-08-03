@@ -51,12 +51,14 @@ module UrlParser
       'cvs', 'git', 'mvn', 'nntp', 'shttp', 'svn'
     ]
 
-    attr_reader :url
+    attr_reader :url, :original_url
 
     def initialize(url, options = {})
       tag_errors do
         @schemes = options.fetch(:schemes) { DEFAULT_SCHEMES }
-        @url = PostRank::URI.clean(url)
+        @preserve = !!options[:preserve]
+        @original_url = url
+        @url = @preserve ? url : PostRank::URI.clean(url)
       end
     end
 
@@ -102,8 +104,8 @@ module UrlParser
       uri.fragment if uri
     end
 
-    def query_values(options = {})
-      uri ? uri.query_values(options).to_h : {}
+    def query_values
+      uri ? uri.query_values.to_h : {}
     end
 
     def valid?
