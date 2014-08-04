@@ -71,6 +71,31 @@ describe UrlParser do
 
   end
 
+  context "#clean!" do
+
+    let(:link) { 'link.to?a=b&utm_source=FeedBurner#stuff' }
+    let(:parser) { UrlParser.new(link, preserve: true) }
+
+    before { parser.clean! }
+
+    it "normalizes the url" do
+      expect(parser.url).to eq 'http://link.to/?a=b'
+    end
+
+    it "resets the uri" do
+      expect(parser.instance_variable_get(:@uri)).to be_nil
+    end
+
+    it "resets the parser" do
+      expect(parser.instance_variable_get(:@parser)).to be_nil
+    end
+
+  end
+
+  context "#to_s" do
+
+  end
+
   context "#uri" do
 
     it "returns a parsed uri" do
@@ -169,6 +194,43 @@ describe UrlParser do
         parser = UrlParser.new("http://#{www}.energy.ca.gov/")
         expect(parser.subdomain).to eq 'energy.ca.gov'
       end
+    end
+
+  end
+
+  # Thanks to http://stackoverflow.com/a/4864170
+  #
+  context "#join" do
+
+    let(:link) { 'http://foo.com/zee/zaw/zoom.html' }
+
+    it "properly combines a url and and relative url" do
+      {
+        'http://zork.com/'                 => 'http://zork.com/',
+        'http://zork.com/#id'              => 'http://zork.com/#id',
+        'http://zork.com/bar'              => 'http://zork.com/bar',
+        'http://zork.com/bar#id'           => 'http://zork.com/bar#id',
+        'http://zork.com/bar/'             => 'http://zork.com/bar/',
+        'http://zork.com/bar/#id'          => 'http://zork.com/bar/#id',
+        'http://zork.com/bar/jim.html'     => 'http://zork.com/bar/jim.html',
+        'http://zork.com/bar/jim.html#id'  => 'http://zork.com/bar/jim.html#id',
+        '/bar'                             => 'http://foo.com/bar',
+        '/bar#id'                          => 'http://foo.com/bar#id',
+        '/bar/'                            => 'http://foo.com/bar/',
+        '/bar/#id'                         => 'http://foo.com/bar/#id',
+        '/bar/jim.html'                    => 'http://foo.com/bar/jim.html',
+        '/bar/jim.html#id'                 => 'http://foo.com/bar/jim.html#id',
+        'jim.html'                         => 'http://foo.com/zee/zaw/jim.html',
+        'jim.html#id'                      => 'http://foo.com/zee/zaw/jim.html#id',
+        '../jim.html'                      => 'http://foo.com/zee/jim.html',
+        '../jim.html#id'                   => 'http://foo.com/zee/jim.html#id',
+        '../'                              => 'http://foo.com/zee/',
+        '../#id'                           => 'http://foo.com/zee/#id',
+        '#id'                              => 'http://foo.com/zee/zaw/zoom.html#id'
+      }.each do |relative_url, expected_result|
+        expect(parser.join(relative_url).to_s).to eq expected_result
+      end
+
     end
 
   end

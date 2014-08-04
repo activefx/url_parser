@@ -62,6 +62,18 @@ module UrlParser
       end
     end
 
+    def clean!
+      @preserve = false
+      @parser = nil
+      @uri = nil
+      @url = PostRank::URI.clean(url)
+      self
+    end
+
+    def to_s
+      url
+    end
+
     def schemes
       Array.wrap(@schemes)
     end
@@ -134,6 +146,11 @@ module UrlParser
       else
         domain
       end
+    end
+
+    def join(relative_path)
+      joined_url = Addressable::URI.join(url, relative_path).to_s
+      UrlParser.new(joined_url, preserve: true)
     end
 
     private
