@@ -2,6 +2,7 @@ require "url_parser/version"
 require "domainatrix"
 require "postrank-uri"
 require "addressable/uri"
+require "digest/sha1"
 
 class Array
 
@@ -19,12 +20,13 @@ end
 
 module UrlParser
 
+
   module Error; end
 
-  def self.call(text)
+  def self.call(text, options = {})
     urls = []
     PostRank::URI.extract(text).each do |url|
-      urls << new(url)
+      urls << new(url, options)
     end
     urls
   end
@@ -54,106 +56,201 @@ module UrlParser
     attr_reader :url, :original_url
 
     def initialize(url, options = {})
-      tag_errors do
-        @schemes = options.fetch(:schemes) { DEFAULT_SCHEMES }
-        @preserve = !!options[:preserve]
-        @original_url = url
-        @url = @preserve ? url : PostRank::URI.clean(url)
-      end
-    end
-
-    def clean!
-      @preserve = false
-      @parser = nil
-      @uri = nil
-      @url = PostRank::URI.clean(url)
-      self
-    end
-
-    def to_s
-      url
+      @schemes = options.fetch(:schemes) { DEFAULT_SCHEMES }
+      @clean = options.fetch(:clean) { false }
+      @original_url = url
+      @url = @clean ? clean(url) : parse(url)
     end
 
     def schemes
       Array.wrap(@schemes)
     end
 
-    def uri
+    def parse(url)
       tag_errors do
-        @uri ||= Addressable::URI.parse(url) rescue nil
+        PostRank::URI.parse(url, raw: true)
       end
     end
 
-    def scheme
-      uri.scheme if uri
-    end
-
-    def user
-      uri.user if uri
-    end
-
-    def password
-      uri.password if uri
-    end
-
-    def host
-      uri.host if uri
-    end
-
-    def port
-      uri.port if uri
-    end
-
-    def path
-      uri.path if uri
-    end
-
-    def query
-      uri.query if uri
-    end
-
-    def fragment
-      uri.fragment if uri
-    end
-
-    def query_values
-      uri ? uri.query_values.to_h : {}
-    end
-
-    def valid?
-      return true if domain == 'localhost'
-      return false if uri.nil?
-      return false unless schemes.include?(scheme)
-      return false unless host =~ /\./
-      true
+    def clean(url)
+      tag_errors do
+        PostRank::URI.clean(url, raw: true)
+      end
     end
 
     def parser
       tag_errors do
-        @parser ||= Domainatrix.parse(url)
+        @parser ||= Domainatrix.parse(to_s)
       end
+    end
+
+    def clean!
+      @parser = nil
+      @url = clean(url)
+      @clean = true
+      self
+    end
+
+    def to_s
+      url.to_s
+    end
+
+    def hash(options = {})
+      clean = options.fetch(:clean) { nil }
+      if clean.nil?
+        Digest::SHA1.hexdigest(url.to_s)
+      else
+        Digest::SHA1.hexdigest(
+          clean ? clean(original_url) : parse(original_url)
+        )
+      end
+    end
+
+    def valid?
+      return true if localhost?
+      return false unless schemes.include?(scheme)
+      return false unless hostname =~ /\./
+      true
+    end
+
+    def join(relative_path)
+      UrlParser.new(
+        Addressable::URI.join(url, relative_path).to_s
+      )
+    end
+
+    # URI Components
+
+    def scheme
+      url.scheme
+    end
+
+    def username
+      url.user
+    end
+    alias_method :user, :username
+
+    def password
+      url.password
+    end
+
+    def userinfo
+      url.userinfo
+    end
+
+    def www
+      return parser.subdomain if parser.subdomain.empty?
+      parts = slice_domain.split('.')
+      parts.first =~ /www?\d*/ ? parts.shift : ""
+    end
+
+    def subdomain
+      return parser.subdomain if parser.subdomain.empty?
+      parts = slice_domain.split('.')
+      parts.shift if parts.first =~ /www?\d*/
+      parts.compact.join('.')
+    end
+
+    def subdomains
+      [ www, subdomain ].compact.join('.')
+    end
+
+    def domain_name
+      parser.domain
     end
 
     def domain
       parser.domain_with_public_suffix
     end
 
-    def subdomain
-      unless parser.subdomain.empty?
-        parts = parser.subdomain.tap{ |s| s.slice!(domain) }.split('.')
-        parts.shift if parts.first =~ /www?\d*/
-        (parts << domain).join('.')
-      else
-        domain
-      end
+    def tld
+      parser.public_suffix
     end
 
-    def join(relative_path)
-      joined_url = Addressable::URI.join(url, relative_path).to_s
-      UrlParser.new(joined_url, preserve: true)
+    def hostname
+      url.host
+    end
+
+    def port
+      url.port
+    end
+
+    def host
+      [ hostname, port ].compact.join(':')
+    end
+
+    def origin
+      url.origin
+    end
+
+    def authority
+      url.authority
+    end
+
+    def site
+      url.site
+    end
+
+    def directory
+      parts = path.split('/')
+      parts.pop unless segment.empty?
+      parts.unshit('') unless parts.first.empty?
+      parts.compact.join('/')
+    end
+
+    def path
+      url.path
+    end
+
+    def segment
+      path =~ /\/\z/ ? '' : path.split('/').last
+    end
+
+    def filename
+      return 'index.html' if segment.empty?
+      return '' if suffix.empty?
+      segment
+    end
+
+    def suffix
+      ext = File.extname(path)
+      ext[0] = '' if ext[0] == '.'
+      ext
+    end
+
+    def query
+      url.query
+    end
+
+    def query_values
+      url.query_values.to_h
+    end
+
+    def fragment
+      url.fragment
+    end
+
+    def resource
+      [ [ segment, query ].compact.join('?'), fragment ].compact.join('#')
+    end
+
+    def relative?
+      url.relative?
+    end
+
+    def absolute?
+      url.absolute?
+    end
+
+    def localhost?
+      !!(hostname =~ /(\A|\.)localhost\z/)
     end
 
     private
+
+    def slice_domain
+      parser.subdomain.tap{ |s| s.slice!(domain) }
+    end
 
     def tag_errors
       yield
