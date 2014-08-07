@@ -194,7 +194,7 @@ module UrlParser
     def directory
       parts = path.split('/')
       parts.pop unless segment.empty?
-      parts.unshit('') unless parts.first.empty?
+      parts.unshift('') unless parts.first.empty?
       parts.compact.join('/')
     end
 
