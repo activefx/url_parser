@@ -139,32 +139,38 @@ module UrlParser
     end
 
     def www
-      return parser.subdomain if parser.subdomain.empty?
+      return nil if parser.subdomain.empty?
       parts = slice_domain.split('.')
-      parts.first =~ /www?\d*/ ? parts.shift : ""
+      parts.first =~ /www?\d*/ ? parts.shift : nil
     end
 
     def subdomain
-      return parser.subdomain if parser.subdomain.empty?
+      return nil if parser.subdomain.empty?
       parts = slice_domain.split('.')
       parts.shift if parts.first =~ /www?\d*/
       parts.compact.join('.')
     end
 
     def subdomains
+      return nil if parser.subdomain.empty?
       [ www, subdomain ].compact.join('.')
     end
 
     def domain_name
-      parser.domain
+      parser.domain.empty? ? nil : parser.domain
     end
 
     def domain
-      parser.domain_with_public_suffix
+      if parser.domain_with_public_suffix.empty?
+        nil
+      else
+        parser.domain_with_public_suffix
+      end
     end
 
     def tld
-      parser.public_suffix
+      tld = parser.public_suffix
+      tld.empty? ? nil : tld
     end
 
     def hostname
@@ -176,11 +182,12 @@ module UrlParser
     end
 
     def host
-      [ hostname, port ].compact.join(':')
+      name = [ hostname, port ].compact.join(':')
+      name.empty? ? nil : name
     end
 
     def origin
-      url.origin
+      url.origin == "null" ? nil : url.origin
     end
 
     def authority
@@ -193,8 +200,9 @@ module UrlParser
 
     def directory
       parts = path.split('/')
-      parts.pop unless segment.empty?
-      parts.unshift('') unless parts.first.empty?
+      return '/' if parts.empty?
+      parts.pop unless segment.to_s.empty?
+      parts.unshift('') unless parts.first.to_s.empty?
       parts.compact.join('/')
     end
 
@@ -203,19 +211,19 @@ module UrlParser
     end
 
     def segment
-      path =~ /\/\z/ ? '' : path.split('/').last
+      path =~ /\/\z/ ? nil : path.split('/').last
     end
 
     def filename
-      return 'index.html' if segment.empty?
-      return '' if suffix.empty?
+      return 'index.html' if segment.to_s.empty?
+      return '' if suffix.to_s.empty?
       segment
     end
 
     def suffix
       ext = File.extname(path)
       ext[0] = '' if ext[0] == '.'
-      ext
+      ext.empty? ? nil : ext
     end
 
     def query
@@ -231,7 +239,10 @@ module UrlParser
     end
 
     def resource
-      [ [ segment, query ].compact.join('?'), fragment ].compact.join('#')
+      name = [
+        [ segment, query ].compact.join('?'), fragment
+      ].compact.join('#')
+      name.empty? ? nil : name
     end
 
     def relative?

@@ -271,37 +271,75 @@ describe UrlParser do
   #
   context "uri components" do
 
-    let(:link) do
-      'foo://username:password@ww2.foo.bar.example.com:123/hello/world/there.html?name=ferret#foo'
-    end
-
     let(:parser) { UrlParser.new(link, clean: false) }
 
-    it { expect(parser.scheme).to eq 'foo' }
-    it { expect(parser.username).to eq 'username' }
-    it { expect(parser.password).to eq 'password' }
-    it { expect(parser.userinfo).to eq 'username:password' }
-    it { expect(parser.www).to eq 'ww2' }
-    it { expect(parser.subdomain).to eq 'foo.bar' }
-    it { expect(parser.subdomains).to eq 'ww2.foo.bar' }
-    it { expect(parser.domain_name).to eq 'example' }
-    it { expect(parser.domain).to eq 'example.com' }
-    it { expect(parser.tld).to eq 'com' }
-    it { expect(parser.hostname).to eq 'ww2.foo.bar.example.com' }
-    it { expect(parser.port).to eq 123 }
-    it { expect(parser.host).to eq 'ww2.foo.bar.example.com:123' }
-    it { expect(parser.origin).to eq 'foo://ww2.foo.bar.example.com:123' }
-    it { expect(parser.authority).to eq 'username:password@ww2.foo.bar.example.com:123' }
-    it { expect(parser.site).to eq 'foo://username:password@ww2.foo.bar.example.com:123' }
-    it { expect(parser.directory).to eq '/hello/world' }
-    it { expect(parser.path).to eq '/hello/world/there.html' }
-    it { expect(parser.segment).to eq 'there.html' }
-    it { expect(parser.filename).to eq 'there.html' }
-    it { expect(parser.suffix).to eq 'html' }
-    it { expect(parser.query).to eq 'name=ferret' }
-    it { expect(parser.query_values['name']).to eq 'ferret' }
-    it { expect(parser.fragment).to eq 'foo' }
-    it { expect(parser.resource).to eq 'there.html?name=ferret#foo' }
+    context "when present" do
+
+      let(:link) do
+        'foo://username:password@ww2.foo.bar.example.com:123/hello/world/there.html?name=ferret#foo'
+      end
+
+      it { expect(parser.scheme).to eq 'foo' }
+      it { expect(parser.username).to eq 'username' }
+      it { expect(parser.password).to eq 'password' }
+      it { expect(parser.userinfo).to eq 'username:password' }
+      it { expect(parser.www).to eq 'ww2' }
+      it { expect(parser.subdomain).to eq 'foo.bar' }
+      it { expect(parser.subdomains).to eq 'ww2.foo.bar' }
+      it { expect(parser.domain_name).to eq 'example' }
+      it { expect(parser.domain).to eq 'example.com' }
+      it { expect(parser.tld).to eq 'com' }
+      it { expect(parser.hostname).to eq 'ww2.foo.bar.example.com' }
+      it { expect(parser.port).to eq 123 }
+      it { expect(parser.host).to eq 'ww2.foo.bar.example.com:123' }
+      it { expect(parser.origin).to eq 'foo://ww2.foo.bar.example.com:123' }
+      it { expect(parser.authority).to eq 'username:password@ww2.foo.bar.example.com:123' }
+      it { expect(parser.site).to eq 'foo://username:password@ww2.foo.bar.example.com:123' }
+      it { expect(parser.directory).to eq '/hello/world' }
+      it { expect(parser.path).to eq '/hello/world/there.html' }
+      it { expect(parser.segment).to eq 'there.html' }
+      it { expect(parser.filename).to eq 'there.html' }
+      it { expect(parser.suffix).to eq 'html' }
+      it { expect(parser.query).to eq 'name=ferret' }
+      it { expect(parser.query_values['name']).to eq 'ferret' }
+      it { expect(parser.fragment).to eq 'foo' }
+      it { expect(parser.resource).to eq 'there.html?name=ferret#foo' }
+
+    end
+
+    context "when missing" do
+
+      let(:link) do
+        '/'
+      end
+
+      it { expect(parser.scheme).to be_nil }
+      it { expect(parser.username).to be_nil }
+      it { expect(parser.password).to be_nil }
+      it { expect(parser.userinfo).to be_nil }
+      it { expect(parser.www).to be_nil }
+      it { expect(parser.subdomain).to be_nil }
+      it { expect(parser.subdomains).to be_nil }
+      it { expect(parser.domain_name).to be_nil }
+      it { expect(parser.domain).to be_nil }
+      it { expect(parser.tld).to be_nil }
+      it { expect(parser.hostname).to be_nil }
+      it { expect(parser.port).to be_nil }
+      it { expect(parser.host).to be_nil }
+      it { expect(parser.origin).to be_nil }
+      it { expect(parser.authority).to be_nil }
+      it { expect(parser.site).to be_nil }
+      it { expect(parser.directory).to eq '/' }
+      it { expect(parser.path).to eq '/' }
+      it { expect(parser.segment).to be_nil }
+      it { expect(parser.filename).to eq 'index.html' }
+      it { expect(parser.suffix).to be_nil }
+      it { expect(parser.query).to be_nil }
+      it { expect(parser.query_values['name']).to be_nil }
+      it { expect(parser.fragment).to be_nil }
+      it { expect(parser.resource).to be_nil }
+
+    end
 
   end
 
@@ -343,9 +381,9 @@ describe UrlParser do
       expect(parser.subdomain).to eq 'foo.bar'
     end
 
-    it "returns an empty string if there is no subdomain" do
+    it "returns nil if there is no subdomain" do
       url = UrlParser.new('https://github.com/')
-      expect(url.subdomain).to eq ''
+      expect(url.subdomain).to be_nil
     end
 
     it "does not include www as part of the subdomain" do
