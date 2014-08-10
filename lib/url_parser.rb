@@ -38,22 +38,23 @@ module UrlParser
   class Base
 
     # https://secure.wikimedia.org/wikipedia/en/wiki/URI_scheme
-    MAJOR_SCHEMES = [
-      'file', 'ftp', 'gopher', 'h323', 'hdl', 'http', 'https', 'imap', 'magnet',
-      'mailto', 'mms', 'news', 'nntp', 'prospero', 'rsync', 'rtsp', 'rtspu',
-      'sftp', 'shttp', 'sip', 'sips', 'snews', 'svn', 'svn+ssh', 'telnet',
-      'wais',
+    SCHEMES = [
+      'file', 'ftp', 'gopher', 'h323', 'hdl', 'http', 'https',
+      'imap', 'magnet', 'mailto', 'mms', 'news', 'nntp', 'prospero',
+      'rsync', 'rtsp', 'rtspu', 'sftp', 'shttp', 'sip', 'sips',
+      'snews', 'svn', 'svn+ssh', 'telnet', 'wais',
       # Unofficial schemes
-      'aim', 'callto', 'cvs', 'facetime', 'feed', 'git', 'gtalk', 'irc', 'ircs',
-      'irc6', 'itms', 'mms', 'msnim', 'skype', 'ssh', 'smb', 'svn', 'ymsg', 'mvn'
+      'aim', 'callto', 'cvs', 'facetime', 'feed', 'git', 'gtalk',
+      'irc', 'ircs', 'irc6', 'itms', 'mms', 'msnim', 'mvn', 'skype',
+      'ssh', 'smb', 'svn', 'ymsg', 'webcal'
     ]
 
     DEFAULT_SCHEMES = [
       'http', 'https', 'ftp', 'mailto', 'file', 'ssh', 'feed',
-      'cvs', 'git', 'mvn', 'nntp', 'shttp', 'svn'
+      'cvs', 'git', 'mvn', 'nntp', 'shttp', 'svn', 'webcal'
     ]
 
-    attr_reader :url, :original_url
+    attr_reader :url, :original_url, :raise_errors
 
     def initialize(url, options = {})
       @schemes = options.fetch(:schemes) { DEFAULT_SCHEMES }
