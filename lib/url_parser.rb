@@ -291,7 +291,9 @@ module UrlParser
     def tag_errors
       yield
     rescue Exception => error
-      error.extend(UrlParser::Error)
+      unless error.singleton_class.include?(UrlParser::Error)
+        error.extend(UrlParser::Error)
+      end
       @errors << error
       raise if raise_errors
     end
