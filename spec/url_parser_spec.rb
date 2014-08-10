@@ -33,10 +33,6 @@ describe UrlParser do
       expect(parser.to_s).to eq link
     end
 
-    it "cannot initialize invalid urls" do
-      expect{ UrlParser.new('http:||bra.ziz') }.to raise_error
-    end
-
     it "adds http by default" do
       expect(UrlParser.new('example.com/path').to_s).to eq link
     end
@@ -45,10 +41,12 @@ describe UrlParser do
       expect(UrlParser.new('//example.com/path').to_s).to eq link
     end
 
-    it "any errors raised inherit from UrlParser::Error" do
-      expect{
-        UrlParser.new('http:||bra.ziz')
-      }.to raise_error UrlParser::Error
+    it "cannot initialize invalid urls" do
+      expect(UrlParser.new('http:||bra.ziz').url).to be_nil
+    end
+
+    it "catches errors from invalid urls" do
+      expect(UrlParser.new('http:||bra.ziz').errors).not_to be_empty
     end
 
     context "options" do
@@ -77,6 +75,22 @@ describe UrlParser do
         it "does not clean the url by default" do
           expect(UrlParser.new(link).to_s)
             .to eq PostRank::URI.parse(parser.original_url).to_s
+        end
+
+      end
+
+      context ":raise_errors" do
+
+        it "raises instead of catching errors" do
+          expect{
+            UrlParser.new('http:||bra.ziz', raise_errors: true)
+          }.to raise_error
+        end
+
+        it "any errors raised inherit from UrlParser::Error" do
+          expect{
+            UrlParser.new('http:||bra.ziz', raise_errors: true)
+          }.to raise_error UrlParser::Error
         end
 
       end
@@ -123,10 +137,10 @@ describe UrlParser do
       UrlParser.new(link, clean: false)
     end
 
-    it "tags errors" do
-      parser = UrlParser.new(link, clean: true)
+    it "tags errors when set to raise errors" do
+      parser = UrlParser.new(link, clean: true, raise_errors: true)
       expect(PostRank::URI).to receive(:parse).and_raise(StandardError)
-      expect{ parser.parse(link) }.to raise_error UrlParser::Error
+      expect{ parser.send(:parse, link) }.to raise_error UrlParser::Error
     end
 
   end
@@ -141,9 +155,9 @@ describe UrlParser do
     end
 
     it "tags errors" do
-      parser = UrlParser.new(link, clean: false)
+      parser = UrlParser.new(link, clean: false, raise_errors: true)
       expect(PostRank::URI).to receive(:clean).and_raise(StandardError)
-      expect{ parser.clean(link) }.to raise_error UrlParser::Error
+      expect{ parser.send(:clean, link) }.to raise_error UrlParser::Error
     end
 
   end
@@ -153,15 +167,15 @@ describe UrlParser do
     let(:link) { 'link.to?a=b&utm_source=FeedBurner#stuff' }
 
     it "calls postrank-uri's clean function" do
-      parser = UrlParser.new(link, clean: true)
       expect(Domainatrix).to receive(:parse).with(parser.to_s)
-      parser.parser
+      UrlParser.new(link, clean: true)
     end
 
     it "tags errors" do
-      parser = UrlParser.new(link, clean: false)
       expect(Domainatrix).to receive(:parse).and_raise(StandardError)
-      expect{ parser.parser }.to raise_error UrlParser::Error
+      expect{
+        UrlParser.new(link, clean: false, raise_errors: true)
+      }.to raise_error UrlParser::Error
     end
 
   end
@@ -208,24 +222,12 @@ describe UrlParser do
 
   context "#valid?" do
 
-    it "returns false if the url is invalid" do
-      expect(UrlParser.new('bullshit')).not_to be_valid
+    it "returns true if there are no errors" do
+      expect(UrlParser.new('http://example.com')).to be_valid
     end
 
-    it "returns false if the url scheme is not in the options" do
-      expect(UrlParser.new('telnet://some.com')).not_to be_valid
-    end
-
-    it "returns true if the url scheme is in the options" do
-      expect(UrlParser.new('telnet://some.com', schemes: ['telnet'])).to be_valid
-    end
-
-    it "returns true if the url is valid" do
-      expect(UrlParser.new('http://example.com/')).to be_valid
-    end
-
-    it "returns true for localhost" do
-      expect(UrlParser.new('localhost:5000')).to be_valid
+    it "returns false if there are errors" do
+      expect(UrlParser.new('http:||bra.ziz')).not_to be_valid
     end
 
   end
@@ -273,13 +275,15 @@ describe UrlParser do
 
     let(:parser) { UrlParser.new(link, clean: false) }
 
-    context "when present" do
+    context "when all are present" do
 
       let(:link) do
-        'foo://username:password@ww2.foo.bar.example.com:123/hello/world/there.html?name=ferret#foo'
+        'https://username:password@ww2.foo.bar.example.com:123/hello/world/there.html?name=ferret#foo'
       end
 
-      it { expect(parser.scheme).to eq 'foo' }
+      it { expect(parser.errors).to be_empty }
+      it { expect(parser).to be_valid }
+      it { expect(parser.scheme).to eq 'https' }
       it { expect(parser.username).to eq 'username' }
       it { expect(parser.password).to eq 'password' }
       it { expect(parser.userinfo).to eq 'username:password' }
@@ -292,9 +296,9 @@ describe UrlParser do
       it { expect(parser.hostname).to eq 'ww2.foo.bar.example.com' }
       it { expect(parser.port).to eq 123 }
       it { expect(parser.host).to eq 'ww2.foo.bar.example.com:123' }
-      it { expect(parser.origin).to eq 'foo://ww2.foo.bar.example.com:123' }
+      it { expect(parser.origin).to eq 'https://ww2.foo.bar.example.com:123' }
       it { expect(parser.authority).to eq 'username:password@ww2.foo.bar.example.com:123' }
-      it { expect(parser.site).to eq 'foo://username:password@ww2.foo.bar.example.com:123' }
+      it { expect(parser.site).to eq 'https://username:password@ww2.foo.bar.example.com:123' }
       it { expect(parser.directory).to eq '/hello/world' }
       it { expect(parser.path).to eq '/hello/world/there.html' }
       it { expect(parser.segment).to eq 'there.html' }
@@ -304,15 +308,13 @@ describe UrlParser do
       it { expect(parser.query_values['name']).to eq 'ferret' }
       it { expect(parser.fragment).to eq 'foo' }
       it { expect(parser.resource).to eq 'there.html?name=ferret#foo' }
-
     end
 
-    context "when missing" do
+    context "when none are present" do
 
-      let(:link) do
-        '/'
-      end
+      let(:link) { '/' }
 
+      it { expect(parser.errors).to be_empty }
       it { expect(parser.scheme).to be_nil }
       it { expect(parser.username).to be_nil }
       it { expect(parser.password).to be_nil }
@@ -333,6 +335,72 @@ describe UrlParser do
       it { expect(parser.path).to eq '/' }
       it { expect(parser.segment).to be_nil }
       it { expect(parser.filename).to eq 'index.html' }
+      it { expect(parser.suffix).to be_nil }
+      it { expect(parser.query).to be_nil }
+      it { expect(parser.query_values['name']).to be_nil }
+      it { expect(parser.fragment).to be_nil }
+      it { expect(parser.resource).to be_nil }
+
+    end
+
+    context "when empty" do
+
+      let(:link) { '' }
+
+      it { expect(parser.errors).to be_empty }
+      it { expect(parser.scheme).to be_nil }
+      it { expect(parser.username).to be_nil }
+      it { expect(parser.password).to be_nil }
+      it { expect(parser.userinfo).to be_nil }
+      it { expect(parser.www).to be_nil }
+      it { expect(parser.subdomain).to be_nil }
+      it { expect(parser.subdomains).to be_nil }
+      it { expect(parser.domain_name).to be_nil }
+      it { expect(parser.domain).to be_nil }
+      it { expect(parser.tld).to be_nil }
+      it { expect(parser.hostname).to be_nil }
+      it { expect(parser.port).to be_nil }
+      it { expect(parser.host).to be_nil }
+      it { expect(parser.origin).to be_nil }
+      it { expect(parser.authority).to be_nil }
+      it { expect(parser.site).to be_nil }
+      it { expect(parser.directory).to eq '/' }
+      it { expect(parser.path).to eq '' }
+      it { expect(parser.segment).to be_nil }
+      it { expect(parser.filename).to eq 'index.html' }
+      it { expect(parser.suffix).to be_nil }
+      it { expect(parser.query).to be_nil }
+      it { expect(parser.query_values['name']).to be_nil }
+      it { expect(parser.fragment).to be_nil }
+      it { expect(parser.resource).to be_nil }
+
+    end
+
+    context "when invalid" do
+
+      let(:link) { 'http://#content-zone' }
+
+      it { expect(parser.errors).not_to be_empty }
+      it { expect(parser.scheme).to be_nil }
+      it { expect(parser.username).to be_nil }
+      it { expect(parser.password).to be_nil }
+      it { expect(parser.userinfo).to be_nil }
+      it { expect(parser.www).to be_nil }
+      it { expect(parser.subdomain).to be_nil }
+      it { expect(parser.subdomains).to be_nil }
+      it { expect(parser.domain_name).to be_nil }
+      it { expect(parser.domain).to be_nil }
+      it { expect(parser.tld).to be_nil }
+      it { expect(parser.hostname).to be_nil }
+      it { expect(parser.port).to be_nil }
+      it { expect(parser.host).to be_nil }
+      it { expect(parser.origin).to be_nil }
+      it { expect(parser.authority).to be_nil }
+      it { expect(parser.site).to be_nil }
+      it { expect(parser.directory).to be_nil }
+      it { expect(parser.path).to be_nil }
+      it { expect(parser.segment).to be_nil }
+      it { expect(parser.filename).to be_nil }
       it { expect(parser.suffix).to be_nil }
       it { expect(parser.query).to be_nil }
       it { expect(parser.query_values['name']).to be_nil }
