@@ -39,10 +39,6 @@ module UrlParser
 
   module Error; end
 
-  class InvalidScheme
-    include UrlParser::Error
-  end
-
   def self.call(text, options = {})
     urls = []
     PostRank::URI.extract(text).each do |url|
