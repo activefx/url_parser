@@ -8,6 +8,18 @@ describe UrlParser do
     expect(UrlParser::VERSION).not_to be_nil
   end
 
+  context "::SCHEMES" do
+
+    it { expect( UrlParser::SCHEMES).to be_an Array }
+
+  end
+
+  context "::DEFAULT_SCHEMES" do
+
+    it { expect( UrlParser::DEFAULT_SCHEMES).to be_an Array }
+
+  end
+
   context "::call" do
 
     let(:link) { 'http://example.com/' }
