@@ -24,7 +24,10 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "guard-rspec"
   spec.add_development_dependency "pry"
 
-  spec.add_dependency "domainatrix", ">= 0.0.11"
-  spec.add_dependency "postrank-uri", "~> 1.0"
-  spec.add_dependency "addressable", "~> 2.3"
+  spec.add_dependency "domainatrix", ">= 0.0.11", "< 1.0"
+  spec.add_dependency "public_suffix", ">= 1.4", "< 2"
+  spec.add_dependency "postrank-uri", ">= 1.0.19", "< 2"
+  spec.add_dependency "addressable", ">= 2.3", "< 3"
+  spec.add_dependency "activemodel", ">= 4", "< 5"
+  spec.add_dependency "naught"
 end
