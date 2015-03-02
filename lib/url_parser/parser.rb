@@ -1,4 +1,5 @@
 require "postrank-uri"
+require "public_suffix"
 require "url_parser/null_object"
 
 module UrlParser
