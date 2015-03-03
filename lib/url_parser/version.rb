@@ -1,3 +1,3 @@
 module UrlParser
-  VERSION = "0.4.0"
+  VERSION = "0.9.9"
 end
