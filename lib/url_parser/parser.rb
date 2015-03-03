@@ -7,11 +7,24 @@ module UrlParser
 
     attr_reader :errors, :uri, :uri_parser, :domain_name_parser
 
-    def initialize(uri)
+    def initialize(uri, **options)
+      @clean              = options.fetch(:clean) { false }
       @errors             = Hash.new { |hash, key| hash[key] = Array.new }
       @uri                = uri
       @uri_parser         = parse_uri
       @domain_name_parser = parse_domain_name
+    end
+
+    def respond_to?(method, include_private = false)
+      super || uri_parser.respond_to?(method, include_private)
+    end
+
+    def clean?
+      !!@clean
+    end
+
+    def to_s
+      uri_parser.to_s
     end
 
     # Top level URI naming structure / protocol.
@@ -64,7 +77,7 @@ module UrlParser
       trd.split('.').first.to_s[/www?\d*/] if trd
     end
 
-    # Returns the Top Level Domain part, aka the extension.
+    # Returns the top level domain portion, aka the extension.
     #
     def tld
       domain_name_parser.tld
@@ -72,7 +85,7 @@ module UrlParser
     alias_method :top_level_domain, :tld
     alias_method :extension, :tld
 
-    # Returns the Second Level Domain part, aka the domain part.
+    # Returns the second level domain portion, aka the domain part.
     #
     def sld
       domain_name_parser.sld
@@ -80,7 +93,7 @@ module UrlParser
     alias_method :second_level_domain, :sld
     alias_method :domain_name, :sld
 
-    # Returns the Third Level Domain part, aka the subdomain part.
+    # Returns the third level domain portion, aka the subdomain part.
     #
     def trd
       domain_name_parser.trd
@@ -205,9 +218,22 @@ module UrlParser
 
     private
 
+    def method_missing(method, *arguments, &block)
+      if uri_parser.respond_to?(method)
+        uri_parser.send(method, *arguments, &block)
+      else
+        super
+      end
+    end
+
+   def clean(uri, opts = {})
+      uri = normalize(c14n(unescape(uri), opts))
+      opts[:raw] ? uri : uri.to_s
+    end
+
     def parse_uri
       begin
-        PostRank::URI.parse(uri)
+        clean? ? PostRank::URI.clean(uri, raw: true) : PostRank::URI.parse(uri)
       rescue => e
         errors[:base] << e.message
         UrlParser::NullObject.new

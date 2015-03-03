@@ -47,6 +47,30 @@ RSpec.describe UrlParser::Parser do
 
   end
 
+  context "#respond_to?" do
+
+    let(:instance) { described_class.new(empty_uri) }
+
+    it "returns true for defined methods" do
+      expect(instance).to respond_to :location
+    end
+
+    it "returns true for Addressable::URI instance methods" do
+      expect(instance).to respond_to :relative?
+    end
+
+  end
+
+  context "method missing" do
+
+    let(:instance) { described_class.new(empty_uri) }
+
+    it "deleages missing methods to Addressable::URI if available" do
+      expect(instance.absolute?).to eq false
+    end
+
+  end
+
   context "DSL" do
 
     let(:instance) { described_class.new(absolute_uri) }
@@ -320,11 +344,6 @@ RSpec.describe UrlParser::Parser do
       end
 
     end
-
-  end
-
-
-  context "with a relative URI" do
 
   end
 
