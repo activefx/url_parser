@@ -136,14 +136,14 @@ module UrlParser
       if uri.respond_to?(:canonical)
         uri_string = uri.canonical
       else
-        uri_string = UrlParser::URI.new(uri, clean: true).canonical
+        uri_string = UrlParser::URI.new(uri.to_s, clean: true).canonical
       end
-      self.canonical == uri_string
+      canonical == uri_string
     end
 
     def ==(uri)
       return false unless uri.kind_of?(UrlParser::URI)
-      return self.canonical == uri.canonical
+      canonical == uri.canonical
     end
 
     def valid?(context = nil)
