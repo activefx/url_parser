@@ -1,5 +1,4 @@
 require "url_parser/version"
-require "domainatrix"
 require "postrank-uri"
 require "addressable/uri"
 require "digest/sha1"
