@@ -120,15 +120,14 @@ module UrlParser
     #
     def canonical
       cleaned_uri = if cleaned?
-        parser
+        parser.to_s
       else
-        UrlParser::Parser.new(self.to_s, clean: true)
+        UrlParser::Parser.new(self.to_s, clean: true).to_s
       end
-      normalized_uri = cleaned_uri.normalize.to_s
       if www
-        normalized_uri.sub(/\A#{Regexp.escape(scheme)}:\/\/#{www}\./, "#{scheme}://")
+        cleaned_uri.sub(/\A#{Regexp.escape(scheme)}:\/\/#{www}\./, "#{scheme}://")
       else
-        normalized_uri
+        cleaned_uri
       end
     end
 
