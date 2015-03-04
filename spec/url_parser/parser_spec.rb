@@ -213,6 +213,11 @@ RSpec.describe UrlParser::Parser do
         expect(instance.method(:naked_subdomain)).to eq instance.method(:naked_trd)
       end
 
+      it "returns non-ww? subdomains when there is no ww? present" do
+        instance = described_class.new('https://some.subdomain.example.com')
+        expect(instance.naked_trd).to eq 'some.subdomain'
+      end
+
     end
 
     context "#domain" do

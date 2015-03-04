@@ -104,7 +104,7 @@ module UrlParser
     # Any non-ww? subdomains.
     #
     def naked_trd
-      trd[/(?<=^#{www}\.).+/] if trd
+      (trd && www) ? trd[/(?<=^#{www}\.).+/] : trd
     end
     alias_method :naked_subdomain, :naked_trd
 
