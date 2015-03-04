@@ -6,14 +6,13 @@ RSpec.describe UrlParser::Parser do
   let(:invalid_input) { Array.new }
   let(:empty_uri) { '' }
   let(:root_path) { '/' }
+  let(:example) { 'http://example.com' }
   let(:relative_uri) { '/some/path/to.html?name=example' }
   let(:absolute_uri) { 'foo://username:password@ww2.foo.bar.example.com:123/hello/world/there.html?name=ferret#foo' }
   let(:ip_address) { 'http://127.0.0.1:80' }
   let(:ip_address_instance) { described_class.new(ip_address) }
 
   context ".new" do
-
-    let(:example) { 'http://example.com' }
 
     it "requires an argument" do
       expect{ described_class.new }.to raise_error ArgumentError
@@ -32,6 +31,24 @@ RSpec.describe UrlParser::Parser do
     it "accepts an Addressable::URI" do
       instance = described_class.new(Addressable::URI.parse(example))
       expect(instance.sld).to eq 'example'
+    end
+
+    context "options" do
+
+      context ":clean" do
+
+        it "is false by default" do
+          instance = described_class.new(example)
+          expect(instance).not_to be_clean
+        end
+
+        it "can be set to true" do
+          instance = described_class.new(example, clean: true)
+          expect(instance).to be_clean
+        end
+
+      end
+
     end
 
   end
