@@ -33,6 +33,11 @@ RSpec.describe UrlParser::Parser do
       expect(instance.sld).to eq 'example'
     end
 
+    it "defaults to http scheme if unspecified" do
+      instance = described_class.new('example.com')
+      expect(instance.scheme).to eq 'http'
+    end
+
     context "options" do
 
       context ":clean" do
