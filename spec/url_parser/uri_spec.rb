@@ -304,25 +304,19 @@ RSpec.describe UrlParser::URI do
 
     context "by default" do
 
-      it "is true if domain is valid" do
-        expect(instance).to be_valid
+      it "is true for absolute URIs" do
+        expect(absolute_uri).to be_valid
       end
 
-      it "validates domain against public suffix list if present" do
-        instance = described_class.new('http://example.fuk')
-        instance.valid?
-        expect(instance.errors[:domain]).to include 'is not valid'
-      end
-
-      it "does not validate domain against public suffix list if relative" do
+      it "is true for relative URIs" do
         expect(relative_uri).to be_valid
       end
 
-      it "does not validate domain against public suffix list if IPv4 address" do
+      it "is true for IPv4 addresses" do
         expect(ipv4).to be_valid
       end
 
-      it "does not validate domain against public suffix list if IPv6 address" do
+      it "is true for IPv6 addresses" do
         expect(ipv6).to be_valid
       end
 
@@ -343,6 +337,30 @@ RSpec.describe UrlParser::URI do
         instance.valid?
         another_instance = described_class.new('http://example.com')
         expect(another_instance).to be_valid
+      end
+
+    end
+
+    context "with the public suffix validator" do
+
+      it "is valid with a domain on the public suffix list" do
+        instance = described_class.new('http://example.com', domain: { public_suffix: true })
+        expect(instance).to be_valid
+      end
+
+      it "is invalid with a domain not on the public suffix list" do
+        instance = described_class.new('http://example.qqq', domain: { public_suffix: true })
+        expect(instance).not_to be_valid
+      end
+
+      it "is invalid if the domain is not present" do
+        instance = described_class.new('/some/relative/path', domain: { public_suffix: true })
+        expect(instance).not_to be_valid
+      end
+
+      it "does nothing when applied to irrelevant attributes" do
+        instance = described_class.new('/some/relative/path', path: { public_suffix: true })
+        expect(instance).to be_valid
       end
 
     end

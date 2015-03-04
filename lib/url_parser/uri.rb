@@ -3,6 +3,7 @@ require "active_support/core_ext/hash/slice"
 require "active_model"
 require "addressable/uri"
 require "digest/sha1"
+require "url_parser/validators/public_suffix"
 require "url_parser/parser"
 
 module UrlParser
@@ -64,8 +65,6 @@ module UrlParser
     alias_method :third_level_domain, :trd
     alias_method :subdomains, :trd
     alias_method :naked_subdomain, :naked_trd
-
-    validate :validate_public_suffix, if: :validate_public_suffix?
 
     def initialize(uri, **options)
       @errors   = ActiveModel::Errors.new(self)
@@ -172,16 +171,6 @@ module UrlParser
     def assign_components
       COMPONENTS.each do |component|
         self.public_send("#{component}=", parser.public_send(component))
-      end
-    end
-
-    def validate_public_suffix?
-      hostname && !ip_address?
-    end
-
-    def validate_public_suffix
-      unless relative? || parser.errors[:domain].empty?
-        errors[:domain] << 'is not valid'
       end
     end
 
