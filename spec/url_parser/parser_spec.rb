@@ -49,6 +49,25 @@ RSpec.describe UrlParser::Parser do
 
       end
 
+      context ":replace_feed_scheme" do
+
+        it "is true by default" do
+          instance = described_class.new(example)
+          expect(instance).to be_replace_feed_scheme
+        end
+
+        it "when true replace the feed scheme with http" do
+          instance = described_class.new('feed://example.com', replace_feed_scheme: true)
+          expect(instance.scheme).to eq 'http'
+        end
+
+        it "can be set to false" do
+          instance = described_class.new(example, replace_feed_scheme: false)
+          expect(instance).not_to be_replace_feed_scheme
+        end
+
+      end
+
     end
 
   end

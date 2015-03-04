@@ -121,7 +121,7 @@ module UrlParser
       cleaned_uri = if cleaned?
         parser.to_s
       else
-        UrlParser::Parser.new(self.to_s, clean: true).to_s
+        UrlParser::Parser.new(self.to_s, options.merge({ clean: true })).to_s
       end
       if www
         cleaned_uri.sub(/\A#{Regexp.escape(scheme)}:\/\/#{www}\./, "#{scheme}://")
@@ -134,7 +134,7 @@ module UrlParser
       if uri.respond_to?(:canonical)
         uri_string = uri.canonical
       else
-        uri_string = UrlParser::URI.new(uri.to_s, clean: true).canonical
+        uri_string = UrlParser::URI.new(uri.to_s, options.merge({ clean: true })).canonical
       end
       canonical == uri_string
     end
@@ -164,7 +164,7 @@ module UrlParser
       when UrlParser::Parser
         uri
       else
-        UrlParser::Parser.new(uri, clean: cleaned?)
+        UrlParser::Parser.new(uri, options)
       end
     end
 

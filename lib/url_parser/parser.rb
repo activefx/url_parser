@@ -8,11 +8,12 @@ module UrlParser
     attr_reader :errors, :uri, :uri_parser, :domain_name_parser
 
     def initialize(uri, **options)
-      @clean              = options.fetch(:clean) { false }
-      @errors             = Hash.new { |hash, key| hash[key] = Array.new }
-      @uri                = uri
-      @uri_parser         = parse_uri
-      @domain_name_parser = parse_domain_name
+      @clean                = options.fetch(:clean) { false }
+      @replace_feed_scheme  = options.fetch(:replace_feed_scheme) { true }
+      @errors               = Hash.new { |hash, key| hash[key] = Array.new }
+      @uri                  = uri
+      @uri_parser           = parse_uri
+      @domain_name_parser   = parse_domain_name
     end
 
     def respond_to?(method, include_private = false)
@@ -21,6 +22,10 @@ module UrlParser
 
     def clean?
       !!@clean
+    end
+
+    def replace_feed_scheme?
+      !!@replace_feed_scheme
     end
 
     def to_s
@@ -231,9 +236,18 @@ module UrlParser
       opts[:raw] ? uri : uri.to_s
     end
 
+    def parsed_uri
+      @parsed_uri ||= clean? ? PostRank::URI.clean(uri, raw: true) : PostRank::URI.parse(uri)
+    end
+
+    def prepare_uri
+      parsed_uri.scheme = 'http' if (parsed_uri.scheme == 'feed') && replace_feed_scheme?
+      parsed_uri
+    end
+
     def parse_uri
       begin
-        clean? ? PostRank::URI.clean(uri, raw: true) : PostRank::URI.parse(uri)
+        prepare_uri
       rescue => e
         errors[:base] << e.message
         UrlParser::NullObject.new
