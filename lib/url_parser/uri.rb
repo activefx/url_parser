@@ -102,6 +102,10 @@ module UrlParser
       ipv4? || ipv6?
     end
 
+    def naked?
+      !localhost? && www.nil?
+    end
+
     def hash
       Digest::SHA1.hexdigest(self.to_s)
     end

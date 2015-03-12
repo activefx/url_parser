@@ -124,6 +124,24 @@ RSpec.describe UrlParser::URI do
 
   end
 
+  context "#naked?" do
+
+    it "is always false for localhost addresses" do
+      expect(localhost).not_to be_naked
+    end
+
+    it "is false for uris with a ww? third level domain" do
+      instance = described_class.new('http://www.example.com')
+      expect(instance).not_to be_naked
+    end
+
+    it "is true for uris without a ww? third level domain" do
+      instance = described_class.new('http://example.com')
+      expect(instance).to be_naked
+    end
+
+  end
+
   context "#localhost?" do
 
     it "returns true for localhost addresses" do
