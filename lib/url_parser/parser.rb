@@ -7,7 +7,7 @@ module UrlParser
 
     attr_reader :errors, :uri, :uri_parser, :domain_name_parser
 
-    def initialize(uri, **options)
+    def initialize(uri, options = {})
       @clean                = options.fetch(:clean) { false }
       @replace_feed_scheme  = options.fetch(:replace_feed_scheme) { true }
       @errors               = Hash.new { |hash, key| hash[key] = Array.new }

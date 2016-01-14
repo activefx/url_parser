@@ -66,7 +66,7 @@ module UrlParser
     alias_method :subdomains, :trd
     alias_method :naked_subdomain, :naked_trd
 
-    def initialize(uri, **options)
+    def initialize(uri, options = {})
       @errors   = ActiveModel::Errors.new(self)
       @options  = options
       @original = uri

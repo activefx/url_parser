@@ -7,7 +7,7 @@ module UrlParser
 
   module Error; end
 
-  def self.new(url, **options)
+  def self.new(url, options = {})
     URI.new(url, options)
   end
 
