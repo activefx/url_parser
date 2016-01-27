@@ -15,7 +15,7 @@ module UrlParser
 
   def tag_errors
     yield
-  rescue Exception => error
+  rescue StandardError => error
     unless error.singleton_class.include?(UrlParser::Error)
       error.extend(UrlParser::Error)
     end
