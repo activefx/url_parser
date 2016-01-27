@@ -8,10 +8,15 @@ module UrlParser
   module Error; end
 
   def self.new(url, options = {})
-    URI.new(url, options)
+    warn "[DEPRECATION] `.new` is deprecated.  Please use `.parse` instead."
+    parse(url, options)
   end
 
   module_function
+
+  def parse(url, options = {})
+    URI.new(url, options)
+  end
 
   def tag_errors
     yield
