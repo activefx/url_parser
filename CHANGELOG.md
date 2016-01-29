@@ -7,3 +7,4 @@ v0.5.0 / 2017-01-26
   * Added UrlParser::URI#ipv4 and UrlParser::URI#ipv6 to return the actual values, if applicable 
   * Added [gem_config](https://github.com/krautcomputing/gem_config) for configurable library settings :default_scheme and :scheme_map, see README.md for usage 
   * Added [SimpleIDN](https://github.com/mmriis/simpleidn) for unicode to ASCII conversions 
+  * Add UrlParser::Domain to handle domain name validations
