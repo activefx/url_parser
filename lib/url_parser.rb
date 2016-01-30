@@ -63,7 +63,9 @@ module UrlParser
       [Regexp.last_match[1].delete('%')].pack('H*')
     end
 
-    str = uri.to_s.dup
+    string = uri.to_s
+
+    str = string.dup
       .gsub(Addressable::URI::URIREGEX, &query_spaces)
       .force_encoding(Encoding::ASCII_8BIT)
       .gsub(/((?:%[0-9a-fA-F]{2})+)/, &decode_chars)
