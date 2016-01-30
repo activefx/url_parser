@@ -42,9 +42,19 @@ RSpec.describe UrlParser::Domain do
       expect(instance.suffix).to be_a PublicSuffix::Domain
     end
 
+    it "with a PublicSuffix::Domain, a call to #to_s returns the domain" do
+      instance = described_class.new('my.example.com')
+      expect(instance.suffix.to_s).to eq 'my.example.com'
+    end
+
     it "when domain is invalid, returns a OpenStruct" do
       instance = described_class.new('//')
       expect(instance.suffix).to be_a OpenStruct
+    end
+
+    it "when domain is invalid, a call to #to_s returns an empty string" do
+      instance = described_class.new('//')
+      expect(instance.suffix.to_s).to eq ''
     end
 
   end

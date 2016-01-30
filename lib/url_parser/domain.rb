@@ -11,7 +11,7 @@ module UrlParser
 
     attr_reader :form, :original, :name
 
-    attr_accessor :errors, :validated
+    attr_accessor :errors
 
     def_delegators :suffix, :tld, :sld, :trd
 
@@ -32,7 +32,9 @@ module UrlParser
         PublicSuffix.parse(name)
       rescue
         self.errors << "'#{original}' is not a valid domain"
-        OpenStruct.new(tld: nil, sld: nil, trd: nil)
+        OpenStruct.new(tld: nil, sld: nil, trd: nil, to_s: '').tap do |os|
+          os.instance_eval('undef to_s')
+        end
       end
     end
 
@@ -43,6 +45,7 @@ module UrlParser
 
     private
 
+    # Addressable::IDNA.unicode_normalize_kc
     def normalize
       SimpleIDN.to_ascii(original.unicode_normalize(form))
     end
@@ -53,7 +56,8 @@ module UrlParser
       validate_label_format
       validate_total_length
       validate_suffix
-      self.validated = true
+
+      @validated = true
     end
 
     def validate_labels
