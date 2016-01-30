@@ -1,7 +1,7 @@
 require 'ostruct'
 require 'forwardable'
-require 'simpleidn'
 require 'public_suffix'
+require 'addressable/idna'
 
 module UrlParser
   class Domain
@@ -9,14 +9,13 @@ module UrlParser
 
     VALID_LABEL = /^(?!\-)[a-z0-9\-]*(?!\-)$/i
 
-    attr_reader :form, :original, :name
+    attr_reader :original, :name
 
     attr_accessor :errors
 
     def_delegators :suffix, :tld, :sld, :trd
 
     def initialize(name, options = {})
-      @form       = options.fetch(:form) { :nfc }
       @original   = name.to_s.downcase.chomp('.')
       @name       = normalize
       @errors     = []
@@ -45,9 +44,8 @@ module UrlParser
 
     private
 
-    # Addressable::IDNA.unicode_normalize_kc
     def normalize
-      SimpleIDN.to_ascii(original.unicode_normalize(form))
+      Addressable::IDNA.to_ascii(original)
     end
 
     def validate
