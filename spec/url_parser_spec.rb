@@ -45,4 +45,48 @@ RSpec.describe UrlParser do
 
   end
 
+  context ".escape" do
+
+    it "encodes a string" do
+      expect(described_class.escape('id=1')).to eq 'id%3D1'
+    end
+
+    it "escapes spaces as %20" do
+      expect(described_class.escape('id= 1')).to eq 'id%3D%201'
+    end
+
+  end
+
+  context ".unescape" do
+
+    it "decodes a string" do
+      expect(described_class.unescape('id%3D1')).to eq 'id=1'
+    end
+
+    it "unescapes spaces" do
+      expect(described_class.unescape('id%3D%201')).to eq 'id= 1'
+    end
+
+    context "accept improperly encoded strings" do
+
+      it "by unencoding spaces in the query encoded as '+'" do
+        expect(described_class.unescape('?id=+1')).to eq '?id= 1'
+      end
+
+      it "by unencoding spaces in the query encoded as '+'" do
+        expect(described_class.unescape('?id%3D+1')).to eq '?id= 1'
+      end
+
+      it "by unencoding spaces in the query encoded as '%20'" do
+        expect(described_class.unescape('?id=%201')).to eq '?id= 1'
+      end
+
+      it "but does not unencode '+' to spaces in paths" do
+        expect(described_class.unescape('/foo+bar?id=foo+bar')).to eq '/foo+bar?id=foo bar'
+      end
+
+    end
+
+  end
+
 end
