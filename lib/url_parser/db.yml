@@ -1,0 +1,77 @@
+---
+:global:
+- _openstat       # Yandex openstat param
+- awesm           # awe.sm tracker
+- gclid           # Google Analytics click ID
+- mc_cid          # Mailchimp campaign unique ID
+- mc_eid          # Mailchimp campaign member email unique ID
+- PHPSESSID       # Legacy PHP session identifier
+- sms_ss          # addthis.com tracker
+- utm_campaign    # Urchin / Google Analytics campaign name
+- utm_content     # Urchin / Google Analytics campaign content
+- utm_medium      # Urchin / Google Analytics campaign medium
+- utm_nooverride  # Urchin nooverride param
+- utm_reader      # Urchin reader param
+- utm_source      # Urchin / Google Analytics campaign source
+- utm_term        # Urchin / Google Anlaytics campaign term
+- utm_type        # Urchin type param
+- xtor            # AT Internet tracker
+:hosts:
+  allthingsd.com:
+  - mod
+  cbc.ca:
+  - ref
+  cnet.com:
+  - part
+  - subj
+  - tag
+  cnn.com:
+  - eref
+  diepresse.com:
+  - _vl_backlink
+  dw-world.de:
+  - maca
+  economist.com:
+  - fsrc
+  espn.com:
+  - campaign
+  - source
+  espn.go.com:
+  - campaign
+  - source
+  latimes.com:
+  - track
+  macworld.com:
+  - lsrc
+  nytimes.com:
+  - partner
+  - pagewanted
+  - emc
+  - _r
+  - ref
+  - src
+  repubblica.it:
+  - rss
+  theglobeandmail.com:
+  - cmpid
+  thestar.com:
+  - bn
+  usatoday.com:
+  - csp
+  waomarketing.com:
+  - nucrss
+  washingtonpost.com:
+  - nav
+  - wprss
+  welt.de:
+  - wtmc
+  wikipedia.org:
+  - source
+  wsj.com:
+  - mod
+  youtube.com:
+  - feature
+  - app
+  - ac
+  - src_vid
+  - annotation_id
