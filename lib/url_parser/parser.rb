@@ -26,12 +26,16 @@ module UrlParser
     attr_reader \
       :uri,
       :base_uri,
+      :default_scheme,
       :embedded_params,
       :options
 
     def initialize(uri, options = {})
       @uri              = uri
       @base_uri         = options.delete(:base_uri) { nil }
+      @default_scheme   = options.delete(:default_scheme) {
+                            UrlParser.configuration.default_scheme
+                          }
       @embedded_params  = options.delete(:embedded_params) {
                             UrlParser.configuration.embedded_params
                           }
@@ -41,6 +45,10 @@ module UrlParser
 
     def raw?
       !!@raw
+    end
+
+    def set_default_scheme?
+      !!@default_scheme
     end
 
     def unescape
@@ -61,11 +69,19 @@ module UrlParser
 
         if options[:host]
           parsed_uri.host = options[:host]
+        else
+          parts     = parsed_uri.path.to_s.split(/[\/:]/)
+          hostname  = parsed_uri.host || parts.first
+          domain    = UrlParser::Domain.new(hostname)
+          if domain.valid?
+            parsed_uri.path = '/' + parts.drop(1).join('/')
+            parsed_uri.host = domain.name
+          end
         end
 
         if parsed_uri.host && !parsed_uri.scheme
-          parsed_uri.scheme = UrlParser.configuration.default_scheme
-        end
+          parsed_uri.scheme = default_scheme
+        end if set_default_scheme?
 
         parsed_uri.normalize!
       end

@@ -63,7 +63,8 @@ RSpec.describe UrlParser::Parser do
     end
 
     it "uses the default scheme if only a host is present" do
-      expect(described_class.call('//example.com').scheme).to eq 'http'
+      expect(described_class.call('//example.com', default_scheme: 'https').scheme)
+        .to eq 'https'
     end
 
     it "does not fail with host labels that exceed size limitations" do
@@ -251,9 +252,93 @@ RSpec.describe UrlParser::Parser do
 
   end
 
+  context "#normalize" do
+
+    let(:example) { described_class.call('http://example.com/') }
+
+    def n(uri)
+      described_class.normalize(uri).to_s
+    end
+
+    it "normalizes paths" do
+      expect(described_class.new('http://example.com/').normalize).to eq example
+      expect(described_class.new('http://example.com').normalize).to eq example
+      expect(described_class.new('http://example.com///').normalize).to eq example
+      expect(described_class.new('http://example.com/../').normalize).to eq example
+      expect(described_class.new('http://example.com/a/b/../../').normalize).to eq example
+      expect(described_class.new('http://example.com/a/b/../..').normalize).to eq example
+    end
+
+    it "normalizes query strings" do
+      expect(described_class.new('http://example.com/?').normalize).to eq example
+      expect(described_class.new('http://example.com?').normalize).to eq example
+      expect(described_class.new('http://example.com/a/../?').normalize).to eq example
+    end
+
+    it "normalizes anchors" do
+      expect(described_class.new('http://example.com#test').normalize).to eq example
+      expect(described_class.new('http://example.com#test#test').normalize).to eq example
+      expect(described_class.new('http://example.com/a/../?#test').normalize).to eq example
+    end
+
+    it "cleans whitespace" do
+      expect(described_class.new('http://example.com/a/../?  ').normalize).to eq example
+      expect(described_class.new('http://example.com/a/../? #test').normalize).to eq example
+      expect(described_class.new('http://example.com/ /../').normalize).to eq example
+    end
+
+    it "normalizes the hostname" do
+      expect(described_class.new('EXAMPLE.COM').normalize).to eq example
+      expect(described_class.new('EXAMPLE.COM/ABC').normalize).to eq (example + 'ABC')
+      expect(described_class.new("💩.la").normalize).to eq described_class.call("xn--ls8h.la")
+    end
+
+    it "defaults to http scheme if missing" do
+      expect(described_class.new('example.com').normalize).to eq example
+      expect(described_class.new('https://example.com/').normalize)
+        .to eq described_class.call('https://example.com/')
+    end
+
+    it "removes trailing slashes on paths" do
+      expect(described_class.new('http://example.com/').normalize).to eq example
+      expect(described_class.new('http://example.com/a').normalize).to eq (example + 'a')
+      expect(described_class.new('http://example.com/a/').normalize).to eq (example + 'a')
+      expect(described_class.new('http://example.com/a/b').normalize).to eq (example + 'a/b')
+      expect(described_class.new('http://example.com/a/b/').normalize).to eq (example + 'a/b')
+    end
+
+  end
+
+  context ".normalize!" do
+
+    let(:instance) { described_class.new('http://example.com///') }
+
+    it "updates #uri with the the normalized string" do
+      expect{
+        instance.normalize!
+      }.to change{
+        instance.uri
+      }
+    end
+
+    it "is idempotent" do
+      instance.normalize!
+      expect{
+        instance.normalize!
+      }.not_to change{
+        instance.uri
+      }
+    end
+
+  end
+
   context ".canonicalize" do
 
     let(:instance) { described_class.new('https://wikipedia.org/?source=ABCD&utm_source=EFGH') }
+
+    it "is alised to #c14n" do
+      expect(instance.method(:canonicalize)).to eq instance.method(:c14n)
+    end
 
     it "returns a canonicalized Addressable::URI" do
       expect(instance.canonicalize).to eq Addressable::URI.parse('https://wikipedia.org/')
@@ -272,6 +357,10 @@ RSpec.describe UrlParser::Parser do
   context "#canonicalize!" do
 
     let(:instance) { described_class.new('https://wikipedia.org/?source=ABCD&utm_source=EFGH') }
+
+    it "is alised to #c14n!" do
+      expect(instance.method(:canonicalize!)).to eq instance.method(:c14n!)
+    end
 
     it "updates #uri with the the unescaped string" do
       expect{
