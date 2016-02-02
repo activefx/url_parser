@@ -1,12 +1,11 @@
 # https://secure.wikimedia.org/wikipedia/en/wiki/URI_scheme
 
 require "gem_config"
+require "addressable/uri"
 require "url_parser/version"
 require "url_parser/domain"
 require "url_parser/parser"
-require "url_parser/redux"
 require "url_parser/uri"
-require 'pry'
 
 module UrlParser
   include GemConfig::Base
@@ -14,11 +13,12 @@ module UrlParser
   with_configuration do
     has :default_scheme, classes: [ String, NilClass ], default: 'http'
     has :scheme_map, classes: Hash, default: Hash.new
+    has :embedded_params, classes: Array, default: %w(u url)
   end
 
   module Error; end
 
-  # DB = YAML.load_file(File.join(File.dirname(__FILE__), '/url_parser/db.yml'))
+  DB = YAML.load_file(File.join(File.dirname(__FILE__), '/url_parser/db.yml'))
 
   def self.new(url, options = {})
     warn "[DEPRECATION] `.new` is deprecated. Please use `.parse` instead."
@@ -46,7 +46,7 @@ module UrlParser
   # See also http://tools.ietf.org/html/rfc3986#section-2.3
   #
   def unescape(uri, options = {})
-    encoding = options.fetch(:encoding) { "UTF-8" }
+    encoding = options.fetch(:encoding) { Encoding::UTF_8 }
 
     query_spaces = proc do
       if Regexp.last_match[6]
@@ -76,6 +76,20 @@ module UrlParser
 
   def parse(url, options = {})
     URI.new(url, options)
+  end
+
+  # Wraps its argument in an array unless it is already an array
+  #
+  # See: activesupport/lib/active_support/core_ext/array/wrap.rb, line 36
+  #
+  def wrap(object)
+    if object.nil?
+      []
+    elsif object.respond_to?(:to_ary)
+      object.to_ary || [object]
+    else
+      [object]
+    end
   end
 
   def tag_errors
