@@ -427,6 +427,48 @@ RSpec.describe UrlParser::Parser do
 
   end
 
+  context "#clean!" do
+
+    let(:instance) { described_class.new('#') }
+
+    it "unescapes the URI" do
+      expect(instance).to receive :unescape!
+      instance.clean!
+    end
+
+    it "parses the URI" do
+      expect(instance).to receive :parse!
+      instance.clean!
+    end
+
+    it "unembeds the URI" do
+      expect(instance).to receive :unembed!
+      instance.clean!
+    end
+
+    it "canonicalizes the URI" do
+      expect(instance).to receive :canonicalize!
+      instance.clean!
+    end
+
+    it "normalizes the URI" do
+      expect(instance).to receive :normalize!
+      instance.clean!
+    end
+
+    it "does not convert the URI to a string by default" do
+      expect(instance).not_to receive :raw!
+      instance.clean!
+    end
+
+    it "returns a string with the :raw option enabled" do
+      instance = described_class.new('#', raw: true)
+      expect(instance).to receive :raw!
+      instance.clean!
+    end
+
+  end
+
   context "#sha1" do
 
     let(:instance) { described_class.new('http://example.com') }
@@ -437,6 +479,36 @@ RSpec.describe UrlParser::Parser do
 
     it "returns a SHA1 hash representation of the raw uri" do
       expect(instance.sha1).to eq "89dce6a446a69d6b9bdc01ac75251e4c322bcdff"
+    end
+
+  end
+
+  context "#==" do
+
+    it "is true if two URIs have the same SHA1" do
+      expect(
+        described_class.new('http://example.com/') == 'http://example.com'
+      ).to be true
+    end
+
+    it "is false if two URIs do not have the same SHA1" do
+      expect(
+        described_class.new('http://example.com/') == 'http://example.org'
+      ).to be false
+    end
+
+    it "cleans both URIs before comparing" do
+      expect(
+        described_class.new('http://example.com/?utm_source=google') ==
+        'http://example.com/?utm_source=yahoo'
+      ).to be true
+    end
+
+    it "compares two URIs with the :raw option enabled" do
+      expect(
+        described_class.new('http://example.com/?utm_source=google', raw: true) ==
+        'http://example.com/?utm_source=yahoo'
+      ).to be true
     end
 
   end

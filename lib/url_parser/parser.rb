@@ -110,7 +110,7 @@ module UrlParser
         %w(http https).include?(parsed.scheme) && parsed.host
       end if candidates
 
-      embed ? self.class.call(embed) : original
+      embed ? self.class.call(embed, raw: raw?) : original
     end
     alias_method :embedded, :unembed
 
@@ -177,6 +177,14 @@ module UrlParser
       canonicalize!
       normalize!
       raw! if raw?
+    end
+
+    def ==(uri)
+      opts  = options.merge(raw: false)
+      one   = self.dup.tap { |uri| uri.clean! }
+      two   = self.class.new(uri, opts).tap { |uri| uri.clean! }
+
+      one.sha1 == two.sha1
     end
 
   end
