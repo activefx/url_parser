@@ -1,266 +1,166 @@
-require "postrank-uri"
-require "public_suffix"
-require "url_parser/null_object"
+require 'addressable/uri'
+require 'digest/sha1'
 
 module UrlParser
   class Parser
 
-    attr_reader :errors, :uri, :uri_parser, :domain_name_parser
+    class << self
+
+      def call(uri, options = {}, &blk)
+        return nil unless uri
+
+        parser = new(uri, options).tap do |uri|
+          if block_given?
+            yield uri
+          else
+            uri.parse!
+          end
+        end
+
+        parser.raw? ? parser.raw : parser.uri
+      end
+      alias_method :parse, :call
+
+    end
+
+    attr_reader \
+      :uri,
+      :base_uri,
+      :embedded_params,
+      :options
 
     def initialize(uri, options = {})
-      @clean                = options.fetch(:clean) { false }
-      @replace_feed_scheme  = options.fetch(:replace_feed_scheme) { true }
-      @errors               = Hash.new { |hash, key| hash[key] = Array.new }
-      @uri                  = uri
-      @uri_parser           = parse_uri
-      @domain_name_parser   = parse_domain_name
+      @uri              = uri
+      @base_uri         = options.delete(:base_uri) { nil }
+      @embedded_params  = options.delete(:embedded_params) {
+                            UrlParser.configuration.embedded_params
+                          }
+      @raw              = options.delete(:raw) { false }
+      @options          = options
     end
 
-    def respond_to?(method, include_private = false)
-      super || uri_parser.respond_to?(method, include_private)
+    def raw?
+      !!@raw
     end
 
-    def clean?
-      !!@clean
+    def unescape
+      UrlParser.unescape(uri)
     end
 
-    def replace_feed_scheme?
-      !!@replace_feed_scheme
+    def unescape!
+      @uri = unescape
     end
 
-    def to_s
-      uri_parser.to_s
-    end
+    def parse
+      return uri if uri.is_a?(Addressable::URI)
 
-    # Top level URI naming structure / protocol.
-    #
-    def scheme
-      uri_parser.scheme
-    end
+      base = base_uri ? base_uri : uri
 
-    # Username portion of the userinfo.
-    #
-    def username
-      uri_parser.user
-    end
-    alias_method :user, :username
+      Addressable::URI.parse(base.to_s).tap do |parsed_uri|
+        parsed_uri.join!(uri) if base_uri
 
-    # Password portion of the userinfo.
-    #
-    def password
-      uri_parser.password
-    end
-
-    # URI username and password for authentication.
-    #
-    def userinfo
-      uri_parser.userinfo
-    end
-
-    # Fully qualified domain name or IP address.
-    #
-    def hostname
-      uri_parser.host
-    end
-
-    # Port number.
-    #
-    def port
-      uri_parser.port
-    end
-
-    # Hostname and port.
-    #
-    def host
-      result = [ hostname, port ].compact.join(':')
-      result.empty? ? nil : result
-    end
-
-    # The ww? portion of the subdomain.
-    #
-    def www
-      trd.split('.').first.to_s[/www?\d*/] if trd
-    end
-
-    # Returns the top level domain portion, aka the extension.
-    #
-    def tld
-      domain_name_parser.tld
-    end
-    alias_method :top_level_domain, :tld
-    alias_method :extension, :tld
-
-    # Returns the second level domain portion, aka the domain part.
-    #
-    def sld
-      domain_name_parser.sld
-    end
-    alias_method :second_level_domain, :sld
-    alias_method :domain_name, :sld
-
-    # Returns the third level domain portion, aka the subdomain part.
-    #
-    def trd
-      domain_name_parser.trd
-    end
-    alias_method :third_level_domain, :trd
-    alias_method :subdomains, :trd
-
-    # Any non-ww? subdomains.
-    #
-    def naked_trd
-      (trd && www) ? trd[/(?<=^#{www}\.).+/] : trd
-    end
-    alias_method :naked_subdomain, :naked_trd
-
-    # The domain name with the tld.
-    #
-    def domain
-      domain_name_parser.domain
-    end
-
-    # All subdomains, include ww?.
-    #
-    def subdomain
-      domain_name_parser.subdomain
-    end
-
-    # Scheme and host.
-    #
-    def origin
-      original_origin = uri_parser.origin
-      original_origin == "null" ? nil : original_origin
-    end
-
-    # Userinfo and host.
-    #
-    def authority
-      uri_parser.authority
-    end
-
-    # Scheme, userinfo, and host.
-    #
-    def site
-      uri_parser.site
-    end
-
-    # Directory and segment.
-    #
-    def path
-      uri_parser.path
-    end
-
-    # Last portion of the path.
-    #
-    def segment
-      (path =~ /\/\z/ ? nil : path.split('/').last) if path
-    end
-
-    # Any directories following the site within the URI.
-    #
-    def directory
-      unless path.nil? || path.empty?
-        parts = path.split('/')
-        if parts.empty?
-          '/'
-        else
-          parts.pop unless segment.to_s.empty?
-          parts.unshift('') unless parts.first.to_s.empty?
-          parts.compact.join('/')
+        if options[:host]
+          parsed_uri.host = options[:host]
         end
+
+        if parsed_uri.host && !parsed_uri.scheme
+          parsed_uri.scheme = UrlParser.configuration.default_scheme
+        end
+
+        parsed_uri.normalize!
       end
     end
 
-    # Segment if a file extension is present.
-    #
-    def filename
-      segment.to_s[/.+\..+/]
+    def parse!
+      @uri = parse
     end
 
-    # The file extension of the filename.
-    #
-    def suffix
-      if path
-        ext = File.extname(path)
-        ext[0] = '' if ext[0] == '.'
-        ext.empty? ? nil : ext
-      end
-    end
+    def unembed
+      original = parse
 
-    # Params and values as a string.
-    #
-    def query
-      uri_parser.query
-    end
-
-    # A hash of params and values.
-    #
-    def query_values
-      uri_parser.query_values.to_h
-    end
-
-    # Fragment identifier.
-    #
-    def fragment
-      uri_parser.fragment
-    end
-
-    # Path, query, and fragment.
-    #
-    def resource
-      name = [
-        [ segment, query ].compact.join('?'), fragment
-      ].compact.join('#')
-      name.empty? ? nil : name
-    end
-
-    # Directory and resource - everything after the site.
-    #
-    def location
-      result = [ directory, resource ].compact.join('/')
-      result.empty? ? nil : result
-    end
-
-    private
-
-    def method_missing(method, *arguments, &block)
-      if uri_parser.respond_to?(method)
-        uri_parser.send(method, *arguments, &block)
+      param_keys = if embedded_params.empty?
+        UrlParser.configuration.embedded_params
       else
-        super
+        UrlParser.wrap(embedded_params)
+      end
+
+      candidates = original.query_values.select do |key, value|
+        param_keys.include?(key) &&
+        value =~ Addressable::URI::URIREGEX
+      end.values if original.query_values
+
+      embed = candidates.find do |candidate|
+        parsed = Addressable::URI.parse(candidate)
+        %w(http https).include?(parsed.scheme) && parsed.host
+      end if candidates
+
+      embed ? self.class.call(embed) : original
+    end
+    alias_method :embedded, :unembed
+
+    def unembed!(*embedded_params)
+      @uri = unembed(*embedded_params)
+    end
+    alias_method :embedded!, :unembed!
+
+    def normalize
+      parse.tap do |uri|
+        uri.path      = uri.path.squeeze('/')
+        uri.path      = uri.path.chomp('/') if uri.path.size != 1
+        uri.query     = nil if uri.query && uri.query.empty?
+        uri.fragment  = nil
       end
     end
 
-   def clean(uri, opts = {})
-      uri = normalize(c14n(unescape(uri), opts))
-      opts[:raw] ? uri : uri.to_s
+    def normalize!
+      @uri = normalize
     end
 
-    def parsed_uri
-      @parsed_uri ||= clean? ? PostRank::URI.clean(uri, raw: true) : PostRank::URI.parse(uri)
-    end
+    def canonicalize
+      parse.tap do |uri|
+        matches_global_param = ->(key, value) do
+          UrlParser::DB[:global].include?(key)
+        end
 
-    def prepare_uri
-      parsed_uri.scheme = 'http' if (parsed_uri.scheme == 'feed') && replace_feed_scheme?
-      parsed_uri
-    end
+        matches_host_based_param = ->(key, value) do
+          UrlParser::DB[:hosts].find do |host, param|
+            uri.host =~ Regexp.new(Regexp.escape(host)) && param.include?(key)
+          end
+        end
 
-    def parse_uri
-      begin
-        prepare_uri
-      rescue => e
-        errors[:base] << e.message
-        UrlParser::NullObject.new
+        uri.query_values = uri.query_values(Array).tap do |params|
+          params.delete_if &matches_global_param
+          params.delete_if &matches_host_based_param
+        end if uri.query_values
       end
     end
+    alias_method :c14n, :canonicalize
 
-    def parse_domain_name
-      begin
-        PublicSuffix.parse(hostname)
-      rescue PublicSuffix::Error => e
-        errors[:domain] << e.message
-        UrlParser::NullObject.new
-      end
+    def canonicalize!
+      @uri = canonicalize
+    end
+    alias_method :c14n!, :canonicalize!
+
+    def raw
+      uri.to_s
+    end
+
+    def raw!
+      @uri = raw
+    end
+
+    def sha1
+      Digest::SHA1.hexdigest(raw)
+    end
+    alias_method :hash, :sha1
+
+    def clean!
+      unescape!
+      parse!
+      unembed!
+      canonicalize!
+      normalize!
+      raw! if raw?
     end
 
   end

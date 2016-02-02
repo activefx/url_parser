@@ -1,507 +1,354 @@
 require 'spec_helper'
-require 'url_parser/parser'
 
 RSpec.describe UrlParser::Parser do
 
-  let(:invalid_input) { Array.new }
-  let(:empty_uri) { '' }
-  let(:root_path) { '/' }
-  let(:example) { 'http://example.com' }
-  let(:relative_uri) { '/some/path/to.html?name=example' }
-  let(:absolute_uri) { 'foo://username:password@ww2.foo.bar.example.com:123/hello/world/there.html?name=ferret#foo' }
-  let(:ip_address) { 'http://127.0.0.1:80' }
-  let(:ip_address_instance) { described_class.new(ip_address) }
+  let(:url) { 'http://example.com/path' }
 
   context ".new" do
 
-    it "requires an argument" do
-      expect{ described_class.new }.to raise_error ArgumentError
+    it "sets #uri" do
+      expect(described_class.new('#').uri).to eq '#'
     end
 
-    it "accepts a string" do
-      instance = described_class.new(example)
-      expect(instance.sld).to eq 'example'
+    it "sets options" do
+      opts = { host: 'localhost' }
+      expect(described_class.new('#', opts).options).to eq opts
     end
 
-    it "accepts a URI" do
-      instance = described_class.new(URI(example))
-      expect(instance.sld).to eq 'example'
-    end
+    context "by default" do
 
-    it "accepts an Addressable::URI" do
-      instance = described_class.new(Addressable::URI.parse(example))
-      expect(instance.sld).to eq 'example'
-    end
+      it "uses the library configured embedded_params" do
+        expect(described_class.new('#').embedded_params)
+          .to eq UrlParser.configuration.embedded_params
+      end
 
-    it "defaults to http scheme if unspecified" do
-      instance = described_class.new('example.com')
-      expect(instance.scheme).to eq 'http'
+      it "does not return the raw uri" do
+        expect(described_class.new('#')).not_to be_raw
+      end
+
     end
 
     context "options" do
 
-      context ":clean" do
+      it "accepts a :base_uri option" do
+        expect(described_class.new('#', base_uri: 'http://example.com').base_uri)
+          .to eq 'http://example.com'
+      end
 
-        it "is false by default" do
-          instance = described_class.new(example)
-          expect(instance).not_to be_clean
+      it "accepts a :raw option" do
+        expect(described_class.new('#', raw: true)).to be_raw
+      end
+
+      it "accepts an :embedded_params option" do
+        expect(described_class.new('#', embedded_params: 'ref').embedded_params)
+          .to eq 'ref'
+      end
+
+    end
+
+  end
+
+  context ".call" do
+
+    it "is aliased to .parse" do
+      expect(described_class.method(:call)).to eq described_class.method(:parse)
+    end
+
+    it "returns an Addressable::URI" do
+      expect(described_class.call('#id')).to be_an Addressable::URI
+    end
+
+    it "returns nil if the uri argument is nil" do
+      expect(described_class.call(nil)).to be_nil
+    end
+
+    it "uses the default scheme if only a host is present" do
+      expect(described_class.call('//example.com').scheme).to eq 'http'
+    end
+
+    it "does not fail with host labels that exceed size limitations" do
+      expect(described_class.call('a'*64+'.ca').host).to eq nil
+    end
+
+    %w(javascript mailto xmpp).each do |scheme|
+
+      context "with host-less schemes" do
+
+        let(:instance) { described_class.call("#{scheme}:void(0);") }
+
+        it "sets the scheme for #{scheme} links" do
+          expect(instance.scheme).to eq "#{scheme}"
         end
 
-        it "can be set to true" do
-          instance = described_class.new(example, clean: true)
-          expect(instance).to be_clean
-        end
-
-      end
-
-      context ":replace_feed_scheme" do
-
-        it "is true by default" do
-          instance = described_class.new(example)
-          expect(instance).to be_replace_feed_scheme
-        end
-
-        it "when true replace the feed scheme with http" do
-          instance = described_class.new('feed://example.com', replace_feed_scheme: true)
-          expect(instance.scheme).to eq 'http'
-        end
-
-        it "can be set to false" do
-          instance = described_class.new(example, replace_feed_scheme: false)
-          expect(instance).not_to be_replace_feed_scheme
+        it "sets the path for #{scheme} links" do
+          expect(instance.path).to eq 'void(0);'
         end
 
       end
 
     end
 
-  end
-
-  context "#errors" do
-
-    let(:instance) { described_class.new(empty_uri) }
-
-    it "provides an array for each key in the error hash" do
-      instance.errors[:base] << 'error!'
-      expect(instance.errors[:base]).to include 'error!'
+    it "accepts a custom host" do
+      expect(described_class.call('/path', host: 'localhost').to_s).to eq 'http://localhost/path'
     end
 
-  end
+    context "with a block" do
 
-  context "#respond_to?" do
-
-    let(:instance) { described_class.new(empty_uri) }
-
-    it "returns true for defined methods" do
-      expect(instance).to respond_to :location
-    end
-
-    it "returns true for Addressable::URI instance methods" do
-      expect(instance).to respond_to :relative?
-    end
-
-  end
-
-  context "method missing" do
-
-    let(:instance) { described_class.new(empty_uri) }
-
-    it "deleages missing methods to Addressable::URI if available" do
-      expect(instance.absolute?).to eq false
-    end
-
-  end
-
-  context "DSL" do
-
-    let(:instance) { described_class.new(absolute_uri) }
-
-    context "#errors" do
-
-      it "are empty when the URI and domain parse" do
-        expect(instance.errors).to be_empty
+      it "can call parser methods to modify the uri" do
+        blk = ->(uri){ uri.unembed! }
+        uri = described_class.call('http://energy.gov/exit?url=https%3A//twitter.com/energy', &blk)
+        expect(uri).to eq described_class.call('https://twitter.com/energy')
       end
 
-    end
-
-    context "#scheme" do
-
-      it "returns the top level URI protocol" do
-        expect(instance.scheme).to eq 'foo'
-      end
-
-    end
-
-    context "#username" do
-
-      it "returns the username portion of the userinfo" do
-        expect(instance.username).to eq 'username'
-      end
-
-      it "is aliased to #user" do
-        expect(instance.method(:user)).to eq instance.method(:username)
-      end
-
-    end
-
-    context "#password" do
-
-      it "returns the password portion of the userinfo" do
-        expect(instance.password).to eq 'password'
-      end
-
-    end
-
-    context "#userinfo" do
-
-      it "returns the URI username and password string for authentication" do
-        expect(instance.userinfo).to eq 'username:password'
-      end
-
-    end
-
-    context "#hostname" do
-
-      it "returns the fully qualified domain name" do
-        expect(instance.hostname).to eq 'ww2.foo.bar.example.com'
-      end
-
-      it "returns the fully qualified IP address" do
-        expect(ip_address_instance.hostname).to eq '127.0.0.1'
-      end
-
-    end
-
-    context "#port" do
-
-      it "returns the port number" do
-        expect(instance.port).to eq 123
-      end
-
-    end
-
-    context "#host" do
-
-      it "returns the hostname and port" do
-        expect(instance.host).to eq 'ww2.foo.bar.example.com:123'
-      end
-
-    end
-
-    context "#www" do
-
-      it "returns the ww? portion of the subdomain" do
-        expect(instance.www).to eq 'ww2'
-      end
-
-    end
-
-    context "#tld" do
-
-      it "returns the top level domain portion" do
-        expect(instance.tld).to eq 'com'
-      end
-
-      it "is aliased to #top_level_domain" do
-        expect(instance.method(:top_level_domain)).to eq instance.method(:tld)
-      end
-
-      it "is aliased to #extension" do
-        expect(instance.method(:extension)).to eq instance.method(:tld)
-      end
-
-    end
-
-    context "#sld" do
-
-      it "returns the second level domain portion" do
-        expect(instance.sld).to eq 'example'
-      end
-
-      it "is aliased to #second_level_domain" do
-        expect(instance.method(:second_level_domain)).to eq instance.method(:sld)
-      end
-
-      it "is aliased to #domain_name" do
-        expect(instance.method(:domain_name)).to eq instance.method(:sld)
-      end
-
-    end
-
-    context "#trd" do
-
-      it "returns the third level domain part" do
-        expect(instance.trd).to eq 'ww2.foo.bar'
-      end
-
-      it "is aliased to #third_level_domain" do
-        expect(instance.method(:third_level_domain)).to eq instance.method(:trd)
-      end
-
-      it "is aliased to #subdomains" do
-        expect(instance.method(:subdomains)).to eq instance.method(:trd)
-      end
-
-    end
-
-    context "#naked_trd" do
-
-      it "returns any non-ww? subdomains" do
-        expect(instance.naked_trd).to eq 'foo.bar'
-      end
-
-      it "is aliased to #naked_subdomain" do
-        expect(instance.method(:naked_subdomain)).to eq instance.method(:naked_trd)
-      end
-
-      it "returns non-ww? subdomains when there is no ww? present" do
-        instance = described_class.new('https://some.subdomain.example.com')
-        expect(instance.naked_trd).to eq 'some.subdomain'
-      end
-
-    end
-
-    context "#domain" do
-
-      it "returns the domain name with the tld" do
-        expect(instance.domain).to eq 'example.com'
-      end
-
-    end
-
-    context "#subdomain" do
-
-      it "returns all subdomains including ww?" do
-        expect(instance.subdomain).to eq 'ww2.foo.bar.example.com'
-      end
-
-    end
-
-    context "#origin" do
-
-      it "returns the scheme and host" do
-        expect(instance.origin).to eq 'foo://ww2.foo.bar.example.com:123'
-      end
-
-    end
-
-    context "#authority" do
-
-      it "returns the userinfo and host" do
-        expect(instance.authority).to eq 'username:password@ww2.foo.bar.example.com:123'
-      end
-
-    end
-
-    context "#site" do
-
-      it "returns the scheme, userinfo, and host" do
-        expect(instance.site).to eq 'foo://username:password@ww2.foo.bar.example.com:123'
-      end
-
-    end
-
-    context "#path" do
-
-      it "returns the directory and segment" do
-        expect(instance.path).to eq '/hello/world/there.html'
-      end
-
-    end
-
-    context "#segment" do
-
-      it "returns the last portion of the path" do
-        expect(instance.segment).to eq 'there.html'
-      end
-
-    end
-
-    context "#directory" do
-
-      it "returns any directories following the site within the URI" do
-        expect(instance.directory).to eq '/hello/world'
-      end
-
-    end
-
-    context "#filename" do
-
-      it "returns the segment if a file extension is present" do
-        expect(instance.filename).to eq 'there.html'
-      end
-
-      it "returns nil if a file extension is not present" do
-        instance = described_class.new('/path/to/segment')
-        expect(instance.filename).to be_nil
-      end
-
-    end
-
-    context "#suffix" do
-
-      it "returns the file extension of the filename" do
-        expect(instance.suffix).to eq 'html'
-      end
-
-      it "returns nil if a file extension is not present" do
-        instance = described_class.new('/path/to/segment')
-        expect(instance.suffix).to be_nil
-      end
-
-    end
-
-    context "#query" do
-
-      it "returns the params and values as a string" do
-        expect(instance.query).to eq 'name=ferret'
-      end
-
-    end
-
-    context "#query_values" do
-
-      it "returns a hash of params and values" do
-        expect(instance.query_values).to eq({ 'name' => 'ferret' })
-      end
-
-    end
-
-    context "#fragment" do
-
-      it "returns the fragment identifier" do
-        expect(instance.fragment).to eq 'foo'
-      end
-
-    end
-
-    context "#resource" do
-
-      it "returns the path, query, and fragment" do
-        expect(instance.resource).to eq 'there.html?name=ferret#foo'
-      end
-
-    end
-
-    context "#location" do
-
-      it "returns the directory and resource, constituting everything after the site" do
-        expect(instance.location).to eq '/hello/world/there.html?name=ferret#foo'
+      it "accepts the :raw option" do
+        expect(described_class.call('https://twitter.com/energy', raw: true))
+          .to eq 'https://twitter.com/energy'
       end
 
     end
 
   end
 
-  context "with a root path" do
+  context "#parse" do
 
-    let(:instance) { described_class.new(root_path) }
+    let(:instance) { described_class.new(url) }
 
-    specify { expect(instance.errors[:base]).to be_empty }
-    specify { expect(instance.errors[:domain]).not_to be_empty }
+    it "returns a parsed Addressable::URI" do
+      expect(instance.parse).to be_an Addressable::URI
+    end
 
-    specify { expect(instance.scheme).to be_nil }
-    specify { expect(instance.username).to be_nil }
-    specify { expect(instance.password).to be_nil }
-    specify { expect(instance.userinfo).to be_nil }
-    specify { expect(instance.hostname).to be_nil }
-    specify { expect(instance.host).to be_nil }
-    specify { expect(instance.port).to be_nil }
-    specify { expect(instance.www).to be_nil }
-    specify { expect(instance.tld).to be_nil }
-    specify { expect(instance.sld).to be_nil }
-    specify { expect(instance.trd).to be_nil }
-    specify { expect(instance.naked_trd).to be_nil }
-    specify { expect(instance.domain).to be_nil }
-    specify { expect(instance.subdomain).to be_nil }
-    specify { expect(instance.origin).to be_nil }
-    specify { expect(instance.authority).to be_nil }
-    specify { expect(instance.site).to be_nil }
-    specify { expect(instance.path).to eq '/' }
-    specify { expect(instance.segment).to be_nil }
-    specify { expect(instance.directory).to eq '/' }
-    specify { expect(instance.filename).to be_nil }
-    specify { expect(instance.suffix).to be_nil }
-    specify { expect(instance.query).to be_nil }
-    specify { expect(instance.query_values).to eq({}) }
-    specify { expect(instance.fragment).to be_nil }
-    specify { expect(instance.resource).to be_nil }
-    specify { expect(instance.location).to eq '/' }
+    it "joins URIs with a :base_uri option" do
+      instance = described_class.new('/bar#id', base_uri: 'http://foo.com/zee/zaw/zoom.html')
+      expect(instance.parse).to eq described_class.call('http://foo.com/bar#id')
+    end
+
+    it "does not changes the value of #uri" do
+      expect{
+        instance.parse
+      }.not_to change{
+        instance.uri
+      }
+    end
 
   end
 
-  context "with empty input" do
+  context ".parse!" do
 
-    let(:instance) { described_class.new(empty_uri) }
+    let(:instance) { described_class.new(url) }
 
-    specify { expect(instance.errors[:base]).to be_empty }
-    specify { expect(instance.errors[:domain]).not_to be_empty }
+    it "updates #uri with the the parsed Addressable::URI" do
+      expect{
+        instance.parse!
+      }.to change{
+        instance.uri
+      }
+    end
 
-    specify { expect(instance.scheme).to be_nil }
-    specify { expect(instance.username).to be_nil }
-    specify { expect(instance.password).to be_nil }
-    specify { expect(instance.userinfo).to be_nil }
-    specify { expect(instance.hostname).to be_nil }
-    specify { expect(instance.host).to be_nil }
-    specify { expect(instance.port).to be_nil }
-    specify { expect(instance.www).to be_nil }
-    specify { expect(instance.tld).to be_nil }
-    specify { expect(instance.sld).to be_nil }
-    specify { expect(instance.trd).to be_nil }
-    specify { expect(instance.naked_trd).to be_nil }
-    specify { expect(instance.domain).to be_nil }
-    specify { expect(instance.subdomain).to be_nil }
-    specify { expect(instance.origin).to be_nil }
-    specify { expect(instance.authority).to be_nil }
-    specify { expect(instance.site).to be_nil }
-    specify { expect(instance.path).to eq '' }
-    specify { expect(instance.segment).to be_nil }
-    specify { expect(instance.directory).to be_nil }
-    specify { expect(instance.filename).to be_nil }
-    specify { expect(instance.suffix).to be_nil }
-    specify { expect(instance.query).to be_nil }
-    specify { expect(instance.query_values).to eq({}) }
-    specify { expect(instance.fragment).to be_nil }
-    specify { expect(instance.resource).to be_nil }
-    specify { expect(instance.location).to be_nil }
+    it "is idempotent" do
+      instance.parse!
+      expect{
+        instance.parse!
+      }.not_to change{
+        instance.uri
+      }
+    end
 
   end
 
-  context "with invalid input" do
+  context ".unescape" do
 
-    let(:instance) { described_class.new(invalid_input) }
+    let(:instance) { described_class.new('http://example.com/path?id%3D1') }
 
-    specify { expect(instance.errors[:base]).not_to be_empty }
-    specify { expect(instance.errors[:domain]).not_to be_empty }
+    it "returns an unescaped string" do
+      expect(instance.unescape).to eq 'http://example.com/path?id=1'
+    end
 
-    specify { expect(instance.scheme).to be_nil }
-    specify { expect(instance.username).to be_nil }
-    specify { expect(instance.password).to be_nil }
-    specify { expect(instance.userinfo).to be_nil }
-    specify { expect(instance.hostname).to be_nil }
-    specify { expect(instance.host).to be_nil }
-    specify { expect(instance.port).to be_nil }
-    specify { expect(instance.www).to be_nil }
-    specify { expect(instance.tld).to be_nil }
-    specify { expect(instance.sld).to be_nil }
-    specify { expect(instance.trd).to be_nil }
-    specify { expect(instance.naked_trd).to be_nil }
-    specify { expect(instance.domain).to be_nil }
-    specify { expect(instance.subdomain).to be_nil }
-    specify { expect(instance.origin).to be_nil }
-    specify { expect(instance.authority).to be_nil }
-    specify { expect(instance.site).to be_nil }
-    specify { expect(instance.path).to be_nil }
-    specify { expect(instance.segment).to be_nil }
-    specify { expect(instance.directory).to be_nil }
-    specify { expect(instance.filename).to be_nil }
-    specify { expect(instance.suffix).to be_nil }
-    specify { expect(instance.query).to be_nil }
-    specify { expect(instance.query_values).to eq({}) }
-    specify { expect(instance.fragment).to be_nil }
-    specify { expect(instance.resource).to be_nil }
-    specify { expect(instance.location).to be_nil }
+    it "does not changes the value of #uri" do
+      expect{
+        instance.unescape
+      }.not_to change{
+        instance.uri
+      }
+    end
 
   end
 
+  context ".unescape!" do
+
+    let(:instance) { described_class.new('http://example.com/path?id%3D1') }
+
+    it "updates #uri with the the unescaped string" do
+      expect{
+        instance.unescape!
+      }.to change{
+        instance.uri
+      }
+    end
+
+    it "is idempotent" do
+      instance.unescape!
+      expect{
+        instance.unescape!
+      }.not_to change{
+        instance.uri
+      }
+    end
+
+  end
+
+  context ".unembed" do
+
+    it "extracts an embedded url from a 'u' param" do
+      url = 'http://www.myspace.com/Modules/PostTo/Pages/?u=http%3A%2F%2Fexample.com%2Fnews'
+      instance = described_class.new(url)
+      expect(instance.unembed).to eq described_class.call('http://example.com/news')
+    end
+
+    it "extracts an embedded url from a 'url' param" do
+      url = 'http://energy.gov/exit?url=https%3A//twitter.com/energy'
+      instance = described_class.new(url)
+      expect(instance.unembed).to eq described_class.call('https://twitter.com/energy')
+    end
+
+    it "accepts a custom embedded param key" do
+      url = 'https://www.upwork.com/leaving?ref=https%3A%2F%2Fwww.solaraccreditation.com.au' +
+            '%2Fconsumers%2Ffind-an-installer.html'
+      instance = described_class.new(url, embedded_params: 'ref')
+      expect(instance.unembed)
+        .to eq described_class.call('https://www.solaraccreditation.com.au/consumers/find-an-installer.html')
+    end
+
+    it "accepts custom embedded param keys" do
+      url = 'https://www.upwork.com/leaving?ref=https%3A%2F%2Fwww.solaraccreditation.com.au' +
+            '%2Fconsumers%2Ffind-an-installer.html'
+      instance = described_class.new(url, embedded_params: [ 'u', 'url', 'ref'])
+      expect(instance.unembed)
+        .to eq described_class.call('https://www.solaraccreditation.com.au/consumers/find-an-installer.html')
+    end
+
+  end
+
+  context ".unembed!" do
+
+    let(:instance) { described_class.new('http://energy.gov/exit?url=https%3A//twitter.com/energy') }
+
+    it "updates #uri with the the unescaped string" do
+      expect{
+        instance.unembed!
+      }.to change{
+        instance.uri
+      }
+    end
+
+    it "is idempotent" do
+      instance.unembed!
+      expect{
+        instance.unembed!
+      }.not_to change{
+        instance.uri
+      }
+    end
+
+  end
+
+  context ".canonicalize" do
+
+    let(:instance) { described_class.new('https://wikipedia.org/?source=ABCD&utm_source=EFGH') }
+
+    it "returns a canonicalized Addressable::URI" do
+      expect(instance.canonicalize).to eq Addressable::URI.parse('https://wikipedia.org/')
+    end
+
+    it "does not changes the value of #uri" do
+      expect{
+        instance.canonicalize
+      }.not_to change{
+        instance.uri
+      }
+    end
+
+  end
+
+  context "#canonicalize!" do
+
+    let(:instance) { described_class.new('https://wikipedia.org/?source=ABCD&utm_source=EFGH') }
+
+    it "updates #uri with the the unescaped string" do
+      expect{
+        instance.canonicalize!
+      }.to change{
+        instance.uri
+      }
+    end
+
+    it "is idempotent" do
+      instance.canonicalize!
+      expect{
+        instance.canonicalize!
+      }.not_to change{
+        instance.uri
+      }
+    end
+
+  end
+
+  context "#raw" do
+
+    let(:instance) { described_class.new('https://example.com') }
+
+    it "returns a string" do
+      instance.parse!
+      expect(instance.raw).to eq 'https://example.com/'
+    end
+
+    it "does not changes the value of #uri" do
+      expect{
+        instance.raw
+      }.not_to change{
+        instance.uri
+      }
+    end
+
+  end
+
+  context "#raw!" do
+
+    let(:instance) { described_class.new('https://example.com') }
+
+    before do
+      instance.parse!
+    end
+
+    it "updates #uri with the the raw string" do
+      expect{
+        instance.raw!
+      }.to change{
+        instance.uri
+      }
+    end
+
+    it "is idempotent" do
+      instance.raw!
+      expect{
+        instance.raw!
+      }.not_to change{
+        instance.uri
+      }
+    end
+
+  end
+
+  context "#sha1" do
+
+    let(:instance) { described_class.new('http://example.com') }
+
+    it "is aliased to #hash" do
+      expect(instance.method(:sha1)).to eq instance.method(:hash)
+    end
+
+    it "returns a SHA1 hash representation of the raw uri" do
+      expect(instance.sha1).to eq "89dce6a446a69d6b9bdc01ac75251e4c322bcdff"
+    end
+
+  end
 end
