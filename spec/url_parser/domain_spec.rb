@@ -103,6 +103,11 @@ RSpec.describe UrlParser::Domain do
 
   context "#valid?" do
 
+    it "does not fail on an empty string" do
+      instance = described_class.new("")
+      expect(instance).not_to be_valid
+    end
+
     it "is false when containing invalid characters" do
       instance = described_class.new('my&example.com')
       expect(instance).not_to be_valid

@@ -1,7 +1,6 @@
 require 'ostruct'
 require 'forwardable'
 require 'public_suffix'
-require 'addressable/idna'
 
 module UrlParser
   class Domain
@@ -69,7 +68,7 @@ module UrlParser
     def validate_label_length
       if labels.max_by(&:length).length > 63
         self.errors << "exceeds maximum label length of 63 characters"
-      end
+      end unless labels.empty?
     end
 
     def validate_label_format
