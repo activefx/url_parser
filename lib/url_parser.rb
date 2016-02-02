@@ -6,6 +6,7 @@ require "url_parser/version"
 require "url_parser/domain"
 require "url_parser/parser"
 require "url_parser/uri"
+require "url_parser/url"
 
 module UrlParser
   include GemConfig::Base
