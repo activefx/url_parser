@@ -8,11 +8,20 @@ module UrlParser
 
     VALID_LABEL = /^(?!\-)[a-z0-9\-]*(?!\-)$/i
 
+    SUFFIX_DEFAULTS = {
+      subdomain: nil,
+      domain: nil,
+      tld: nil,
+      sld: nil,
+      trd: nil,
+      to_s: ''
+    }
+
     attr_reader :original, :name
 
     attr_accessor :errors
 
-    def_delegators :suffix, :tld, :sld, :trd
+    def_delegators :suffix, *SUFFIX_DEFAULTS.keys
 
     def initialize(name, options = {})
       @original   = name.to_s.downcase.chomp('.')
@@ -30,7 +39,7 @@ module UrlParser
         PublicSuffix.parse(name)
       rescue
         self.errors << "'#{original}' is not a valid domain"
-        OpenStruct.new(tld: nil, sld: nil, trd: nil, to_s: '').tap do |os|
+        OpenStruct.new(SUFFIX_DEFAULTS).tap do |os|
           os.instance_eval('undef to_s')
         end
       end
