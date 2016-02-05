@@ -25,13 +25,14 @@ module UrlParser
 
     attr_reader \
       :uri,
-      :base_uri,
+      :domain,
       :default_scheme,
       :embedded_params,
       :options
 
     def initialize(uri, options = {})
       @uri              = uri
+      @domain           = nil
       @base_uri         = options.delete(:base_uri) { nil }
       @default_scheme   = options.delete(:default_scheme) {
                             UrlParser.configuration.default_scheme
@@ -41,6 +42,10 @@ module UrlParser
                           }
       @raw              = options.delete(:raw) { false }
       @options          = options
+    end
+
+    def base_uri
+      (@base_uri ? @base_uri : uri).to_s
     end
 
     def raw?
@@ -62,20 +67,18 @@ module UrlParser
     def parse
       return uri if uri.is_a?(Addressable::URI)
 
-      base = base_uri ? base_uri : uri
-
-      Addressable::URI.parse(base.to_s).tap do |parsed_uri|
-        parsed_uri.join!(uri) if base_uri
+      Addressable::URI.parse(base_uri).tap do |parsed_uri|
+        parsed_uri.join!(uri) if @base_uri
 
         if options[:host]
           parsed_uri.host = options[:host]
         else
           parts     = parsed_uri.path.to_s.split(/[\/:]/)
           hostname  = parsed_uri.host || parts.first
-          domain    = UrlParser::Domain.new(hostname)
-          if domain.valid?
+          @domain   = UrlParser::Domain.new(hostname)
+          if @domain.valid?
             parsed_uri.path = '/' + parts.drop(1).join('/')
-            parsed_uri.host = domain.name
+            parsed_uri.host = @domain.name
           end
         end
 
@@ -83,7 +86,9 @@ module UrlParser
           parsed_uri.scheme = default_scheme
         end if set_default_scheme?
 
-        parsed_uri.normalize!
+        if parsed_uri.host && !domain
+          @domain = UrlParser::Domain.new(hostname)
+        end
       end
     end
 
@@ -114,8 +119,8 @@ module UrlParser
     end
     alias_method :embedded, :unembed
 
-    def unembed!(*embedded_params)
-      @uri = unembed(*embedded_params)
+    def unembed!
+      @uri = unembed
     end
     alias_method :embedded!, :unembed!
 
@@ -124,7 +129,10 @@ module UrlParser
         uri.path      = uri.path.squeeze('/')
         uri.path      = uri.path.chomp('/') if uri.path.size != 1
         uri.query     = nil if uri.query && uri.query.empty?
+        uri.query     = uri.query.strip if uri.query
         uri.fragment  = nil
+
+        uri.normalize!
       end
     end
 
@@ -134,11 +142,11 @@ module UrlParser
 
     def canonicalize
       parse.tap do |uri|
-        matches_global_param = ->(key, value) do
+        matches_global_param = proc do |key, value|
           UrlParser::DB[:global].include?(key)
         end
 
-        matches_host_based_param = ->(key, value) do
+        matches_host_based_param = proc do |key, value|
           UrlParser::DB[:hosts].find do |host, param|
             uri.host =~ Regexp.new(Regexp.escape(host)) && param.include?(key)
           end
