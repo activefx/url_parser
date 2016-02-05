@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'url_parser/uri'
 
 RSpec.describe UrlParser::URI do
 
@@ -7,52 +6,46 @@ RSpec.describe UrlParser::URI do
   let(:ipv6) { described_class.new('http://ff02::1') }
   let(:localhost) { described_class.new('http://localhost:5000/some/path') }
   let(:relative_uri) { described_class.new('/some/path/to.html?name=example') }
-  let(:absolute_uri) { described_class.new('foo://username:password@ww2.foo.bar.example.com:123/hello/world/there.html?name=ferret#foo') }
-  let(:instance) { absolute_uri }
 
-  context "#new" do
+  let(:instance) do
+    described_class.new('foo://username:password@ww2.foo.bar.example.com:123/hello/world/there.html?name=ferret#foo')
+  end
+
+  context ".new" do
+
+    it "does not accept the :raw option" do
+      instance = described_class.new('http://example.com', raw: true)
+      expect(instance.uri).to be_an Addressable::URI
+    end
 
     it "requires a uri" do
       expect{ described_class.new }.to raise_error ArgumentError
     end
 
-    it "sets the original uri from the first argument" do
+    it "sets the input uri from the first argument" do
       instance = described_class.new('http://example.com')
-      expect(instance.original).to eq 'http://example.com'
+      expect(instance.input).to eq 'http://example.com'
     end
 
-    {
-      scheme: 'foo',
-      username: 'username',
-      password: 'password',
-      userinfo: 'username:password',
-      hostname: 'ww2.foo.bar.example.com',
-      port: 123,
-      host: 'ww2.foo.bar.example.com:123',
-      www: 'ww2',
-      tld: 'com',
-      sld: 'example',
-      trd: 'ww2.foo.bar',
-      naked_trd: 'foo.bar',
-      domain: 'example.com',
-      subdomain: 'ww2.foo.bar.example.com',
-      origin: 'foo://ww2.foo.bar.example.com:123',
-      authority: 'username:password@ww2.foo.bar.example.com:123',
-      site: 'foo://username:password@ww2.foo.bar.example.com:123',
-      path: '/hello/world/there.html',
-      segment: 'there.html',
-      directory: '/hello/world',
-      filename: 'there.html',
-      suffix: 'html',
-      query: 'name=ferret',
-      query_values: { 'name' => 'ferret' },
-      fragment: 'foo',
-      resource: 'there.html?name=ferret#foo',
-      location: '/hello/world/there.html?name=ferret#foo'
-    }.each do |method, expected_value|
+    context "uri" do
 
-      it "assigns #{method} on initialization" do
-        expect(instance.send(method)).to eq expected_value
+      it "requires an argument" do
+        expect{ described_class.new }.to raise_error ArgumentError
+      end
+
+      it "parses a string into an Addressable::URI" do
+        uri = 'http://example.com'
+        expect(described_class.new(uri).uri).to be_an Addressable::URI
+      end
+
+      it "parses a URI into an Addressable::URI" do
+        uri = URI('http://example.com')
+        expect(described_class.new(uri).uri).to be_an Addressable::URI
+      end
+
+      it "does not parse an object that is an existing Addressable::URI" do
+        uri = Addressable::URI.parse 'http://example.com'
+        expect(described_class.new(uri).uri).to eq uri
       end
 
     end
@@ -78,14 +71,14 @@ RSpec.describe UrlParser::URI do
 
         it "when true it normalizes the url" do
           [
-            'http://igvita.com/',
-            'http://igvita.com///',
-            'http://igvita.com/../?#',
-            'http://igvita.com/a/../?',
-            'http://igvita.com/a/../?utm_source%3Danalytics'
+            'http://example.com/',
+            'http://example.com///',
+            'http://example.com/../?#',
+            'http://example.com/a/../?',
+            'http://example.com/a/../?utm_source%3Danalytics'
           ].each do |url|
             expect(described_class.new(url, clean: true).to_s)
-              .to eq 'http://igvita.com/'
+              .to eq 'http://example.com/'
           end
         end
 
@@ -98,7 +91,283 @@ RSpec.describe UrlParser::URI do
 
     end
 
+    context "unescaped?" do
+
+      it "is false by default" do
+        instance = described_class.new('http://example.com/path?id%3D1')
+        expect(instance).not_to be_unescaped
+        expect(instance.to_s).to eq 'http://example.com/path?id%3D1'
+      end
+
+      it "returns true if the :unescape option is enabled" do
+        instance = described_class.new('http://example.com/path?id%3D1', unescape: true)
+        expect(instance).to be_unescaped
+        expect(instance.to_s).to eq 'http://example.com/path?id=1'
+      end
+
+    end
+
+    context "parsed?" do
+
+      it "is true by default" do
+        instance = described_class.new('http://example.com/')
+        expect(instance).to be_parsed
+      end
+
+      it "cannot be set to false" do
+        instance = described_class.new('http://example.com/', parse: false)
+        expect(instance).to be_parsed
+      end
+
+    end
+
+    context "unembedded?" do
+
+      it "is false by default" do
+        instance = described_class.new('http://energy.gov/exit?url=https%3A//twitter.com/energy')
+        expect(instance).not_to be_unembedded
+        expect(instance.uri.to_s).to eq 'http://energy.gov/exit?url=https%3A//twitter.com/energy'
+      end
+
+      it "returns true if the :unembed option is enabled" do
+        instance = described_class.new('http://energy.gov/exit?url=https%3A//twitter.com/energy', unembed: true)
+        expect(instance).to be_unembedded
+        expect(instance.uri.to_s).to eq 'https://twitter.com/energy'
+      end
+
+    end
+
+    context "canonicalized?" do
+
+      it "is false by default" do
+        instance = described_class.new('https://wikipedia.org/?source=ABCD&utm_source=EFGH')
+        expect(instance).not_to be_canonicalized
+        expect(instance.to_s).to eq 'https://wikipedia.org/?source=ABCD&utm_source=EFGH'
+      end
+
+      it "returns true if the :canonicalize option is enabled" do
+        instance = described_class.new('https://wikipedia.org/?source=ABCD&utm_source=EFGH', canonicalize: true)
+        expect(instance).to be_canonicalized
+        expect(instance.to_s).to eq 'https://wikipedia.org/?'
+      end
+
+    end
+
+    context "normalized?" do
+
+      it "is false by default" do
+        instance = described_class.new('http://example.com/#test')
+        expect(instance).not_to be_normalized
+        expect(instance.to_s).to eq 'http://example.com/#test'
+      end
+
+      it "returns true if the :canonicalize option is enabled" do
+        instance = described_class.new('http://example.com/#test', normalize: true)
+        expect(instance).to be_normalized
+        expect(instance.to_s).to eq 'http://example.com/'
+      end
+
+    end
+
+    context "cleaned?" do
+
+      it "is false by default" do
+        instance = described_class.new('http://example.com/?utm_source=google')
+        expect(instance).not_to be_cleaned
+        expect(instance.uri.to_s).to eq 'http://example.com/?utm_source=google'
+      end
+
+      it "returns true if the :clean option is enabled" do
+        instance = described_class.new('http://example.com/?utm_source=google', clean: true)
+        expect(instance).to be_cleaned
+        expect(instance.uri.to_s).to eq 'http://example.com/'
+      end
+
+    end
+
+    {
+      scheme: 'foo',
+      username: 'username',
+      user: 'username',
+      password: 'password',
+      userinfo: 'username:password',
+      hostname: 'ww2.foo.bar.example.com',
+      naked_hostname: 'foo.bar.example.com',
+      port: 123,
+      host: 'ww2.foo.bar.example.com:123',
+      www: 'ww2',
+      tld: 'com',
+      top_level_domain: 'com',
+      extension: 'com',
+      sld: 'example',
+      second_level_domain: 'example',
+      domain_name: 'example',
+      trd: 'ww2.foo.bar',
+      third_level_domain: 'ww2.foo.bar',
+      subdomains: 'ww2.foo.bar',
+      naked_trd: 'foo.bar',
+      naked_subdomain: 'foo.bar',
+      domain: 'example.com',
+      subdomain: 'ww2.foo.bar.example.com',
+      origin: 'foo://ww2.foo.bar.example.com:123',
+      authority: 'username:password@ww2.foo.bar.example.com:123',
+      site: 'foo://username:password@ww2.foo.bar.example.com:123',
+      path: '/hello/world/there.html',
+      segment: 'there.html',
+      directory: '/hello/world',
+      filename: 'there.html',
+      suffix: 'html',
+      query: 'name=ferret',
+      query_values: { 'name' => 'ferret' },
+      fragment: 'foo',
+      resource: 'there.html?name=ferret#foo',
+      location: '/hello/world/there.html?name=ferret#foo'
+    }.each do |method, expected_value|
+
+      it "delegates ##{method} to the model instance" do
+        expect(instance.send(method)).to eq UrlParser::Model.new(instance.uri).send(method)
+        expect(instance.send(method)).to eq expected_value # Sanity check
+      end
+
+    end
+
+    it "delegates #labels to the model instance's parsed_domain" do
+      expect(instance.labels).to eq [ "com", "example", "bar", "foo", "ww2" ]
+    end
+
   end
+
+  context "clean" do
+
+    it "returns the raw URI if the URI was cleaned on initialization" do
+      instance = described_class.new('http://example.com/?utm_source=google', clean: true)
+      expect(instance.clean).to eq 'http://example.com/'
+    end
+
+    it "reparses the original URI if it was not cleaned" do
+      instance = described_class.new('http://example.com/?utm_source=google')
+      expect(instance.clean).to eq 'http://example.com/'
+    end
+
+  end
+
+  context "#clean?" do
+
+    it "returns true if the URI was cleaned on initialization" do
+      instance = described_class.new('http://example.com/?utm_source=google', clean: true)
+      expect(instance).to be_clean
+    end
+
+    it "returns true if the URI was already 'clean'" do
+      instance = described_class.new('http://example.com/')
+      expect(instance).to be_clean
+    end
+
+    it "returns false if the URI is not clean" do
+      instance = described_class.new('http://example.com/?utm_source=google')
+      expect(instance).not_to be_clean
+    end
+
+  end
+
+  # Thanks to http://stackoverflow.com/a/4864170
+  #
+  context "#+" do
+
+    let(:link) { 'http://foo.com/zee/zaw/zoom.html' }
+
+    it "properly combines a url and and relative url" do
+      {
+        'http://zork.com/'                 => 'http://zork.com/',
+        'http://zork.com/#id'              => 'http://zork.com/#id',
+        'http://zork.com/bar'              => 'http://zork.com/bar',
+        'http://zork.com/bar#id'           => 'http://zork.com/bar#id',
+        'http://zork.com/bar/'             => 'http://zork.com/bar/',
+        'http://zork.com/bar/#id'          => 'http://zork.com/bar/#id',
+        'http://zork.com/bar/jim.html'     => 'http://zork.com/bar/jim.html',
+        'http://zork.com/bar/jim.html#id'  => 'http://zork.com/bar/jim.html#id',
+        '/bar'                             => 'http://foo.com/bar',
+        '/bar#id'                          => 'http://foo.com/bar#id',
+        '/bar/'                            => 'http://foo.com/bar/',
+        '/bar/#id'                         => 'http://foo.com/bar/#id',
+        '/bar/jim.html'                    => 'http://foo.com/bar/jim.html',
+        '/bar/jim.html#id'                 => 'http://foo.com/bar/jim.html#id',
+        'jim.html'                         => 'http://foo.com/zee/zaw/jim.html',
+        'jim.html#id'                      => 'http://foo.com/zee/zaw/jim.html#id',
+        '../jim.html'                      => 'http://foo.com/zee/jim.html',
+        '../jim.html#id'                   => 'http://foo.com/zee/jim.html#id',
+        '../'                              => 'http://foo.com/zee/',
+        '../#id'                           => 'http://foo.com/zee/#id',
+        '#id'                              => 'http://foo.com/zee/zaw/zoom.html#id'
+      }.each do |relative_url, expected_result|
+        instance = described_class.new(link)
+        expect((instance + relative_url).to_s).to eq expected_result
+      end
+    end
+
+    it "returns an instance of UrlParser::URI" do
+      instance = described_class.new(link)
+      expect(instance + '#').to be_a described_class
+    end
+
+    it "is aliased to #join" do
+      instance = described_class.new(link)
+      expect(instance.method(:join)).to eq instance.method(:+)
+    end
+
+  end
+
+  context "#raw" do
+
+    it "is alised to #to_s" do
+      instance = described_class.new('http://example.com/')
+      expect(instance.method(:to_s)).to eq instance.method(:raw)
+    end
+
+    it "returns a string of the URI" do
+      instance = described_class.new('http://example.com/')
+      expect(instance.raw).to be_a String
+    end
+
+  end
+
+  context "#sha1" do
+
+    let(:instance) { described_class.new('http://example.com/') }
+
+    it "is aliased to #hash" do
+      expect(instance.method(:sha1)).to eq instance.method(:hash)
+    end
+
+    it "returns a SHA1 hash representation of the raw uri" do
+      expect(instance.sha1).to eq "9c17e047f58f9220a7008d4f18152fee4d111d14"
+    end
+
+  end
+
+  # context "#canonical" do
+
+  #   it "cleans the uri", :focus do
+  #     instance = described_class.new('http://example.com/?utm_source%3Danalytics')
+  #     expect(instance.canonical).to eq 'http://example.com/'
+  #   end
+
+  #   it "normalizes the uri" do
+  #     instance = described_class.new('http://example.com/../')
+  #     expect(instance.canonical).to eq 'http://example.com/'
+  #   end
+
+  #   it "converts it into a naked domain" do
+  #     instance = described_class.new('http://www.example.com/')
+  #     expect(instance.canonical).to eq 'http://example.com/'
+  #   end
+
+  #   it "preserves the scheme" do
+  #     instance = described_class.new('https://www.example.com/')
+  #     expect(instance.canonical).to eq 'https://example.com/'
+  #   end
+
+  # end
 
   context "#relative?" do
 
@@ -107,7 +376,7 @@ RSpec.describe UrlParser::URI do
     end
 
     it "returns false for absolute URIs" do
-      expect(absolute_uri).not_to be_relative
+      expect(instance).not_to be_relative
     end
 
   end
@@ -115,7 +384,7 @@ RSpec.describe UrlParser::URI do
   context "#absolute?" do
 
     it "returns true for absolute URIs" do
-      expect(absolute_uri).to be_absolute
+      expect(instance).to be_absolute
     end
 
     it "returns false for relative URIs" do
@@ -154,6 +423,18 @@ RSpec.describe UrlParser::URI do
 
   end
 
+  context "#ipv4" do
+
+    it "returns the value of the ipv4 address if present" do
+      expect(ipv4.ipv4).to eq '192.168.1.1'
+    end
+
+    it "returns nil if an ipv4 address is not present" do
+      expect(localhost.ipv4).to be_nil
+    end
+
+  end
+
   context "#ipv4?" do
 
     it "returns true for ipv4 addresses" do
@@ -167,6 +448,18 @@ RSpec.describe UrlParser::URI do
   end
 
   context "#ipv6" do
+
+    it "returns the value of the ipv6 address if present" do
+      expect(ipv6.ipv6).to eq 'ff02::1'
+    end
+
+    it "returns nil if an ipv6 address is not present" do
+      expect(localhost.ipv6).to be_nil
+    end
+
+  end
+
+  context "#ipv6?" do
 
     it "returns true for ipv6 addresses" do
       expect(ipv6).to be_ipv6
@@ -194,195 +487,101 @@ RSpec.describe UrlParser::URI do
 
   end
 
-  context "#username" do
+  context "#==" do
 
-    it "is aliased to #user" do
-      expect(instance.method(:user)).to eq instance.method(:username)
+    it "is true if two URIs have the same SHA1" do
+      expect(
+        described_class.new('http://example.com/') == 'http://example.com'
+      ).to be true
+    end
+
+    it "is false if two URIs do not have the same SHA1" do
+      expect(
+        described_class.new('http://example.com/') == 'http://example.org'
+      ).to be false
+    end
+
+    it "cleans both URIs before comparing" do
+      expect(
+        described_class.new('http://example.com/?utm_source=google') ==
+        'http://example.com/?utm_source=yahoo'
+      ).to be true
+    end
+
+    it "compares two URIs with the :raw option enabled" do
+      expect(
+        described_class.new('http://example.com/?utm_source=google', raw: true) ==
+        'http://example.com/?utm_source=yahoo'
+      ).to be true
     end
 
   end
 
-  context "#tld" do
+  # context "#valid?" do
 
-    it "is aliased to #top_level_domain" do
-      expect(instance.method(:top_level_domain)).to eq instance.method(:tld)
-    end
+  #   context "by default" do
 
-    it "is aliased to #extension" do
-      expect(instance.method(:extension)).to eq instance.method(:tld)
-    end
+  #     it "is true for absolute URIs" do
+  #       expect(absolute_uri).to be_valid
+  #     end
 
-  end
+  #     it "is true for relative URIs" do
+  #       expect(relative_uri).to be_valid
+  #     end
 
-  context "#sld" do
+  #     it "is true for IPv4 addresses" do
+  #       expect(ipv4).to be_valid
+  #     end
 
-    it "is aliased to #second_level_domain" do
-      expect(instance.method(:second_level_domain)).to eq instance.method(:sld)
-    end
+  #     it "is true for IPv6 addresses" do
+  #       expect(ipv6).to be_valid
+  #     end
 
-    it "is aliased to #domain_name" do
-      expect(instance.method(:domain_name)).to eq instance.method(:sld)
-    end
+  #   end
 
-  end
+  #   context "with custom validations" do
 
-  context "#trd" do
+  #     let(:instance) do
+  #       described_class.new('http://example.com', tld: { inclusion: { in: %w(net org) } })
+  #     end
 
-    it "is aliased to #third_level_domain" do
-      expect(instance.method(:third_level_domain)).to eq instance.method(:trd)
-    end
+  #     it "are used to determine validity" do
+  #       instance.valid?
+  #       expect(instance.errors[:tld]).to include "is not included in the list"
+  #     end
 
-    it "is aliased to #subdomains" do
-      expect(instance.method(:subdomains)).to eq instance.method(:trd)
-    end
+  #     it "apply on a case by case basis" do
+  #       instance.valid?
+  #       another_instance = described_class.new('http://example.com')
+  #       expect(another_instance).to be_valid
+  #     end
 
-  end
+  #   end
 
-  context "#naked_trd" do
+  #   context "with the public suffix validator" do
 
-    it "is aliased to #naked_subdomain" do
-      expect(instance.method(:naked_subdomain)).to eq instance.method(:naked_trd)
-    end
+  #     it "is valid with a domain on the public suffix list" do
+  #       instance = described_class.new('http://example.com', domain: { public_suffix: true })
+  #       expect(instance).to be_valid
+  #     end
 
-  end
+  #     it "is invalid with a domain not on the public suffix list" do
+  #       instance = described_class.new('http://example.qqq', domain: { public_suffix: true })
+  #       expect(instance).not_to be_valid
+  #     end
 
-  # Thanks to http://stackoverflow.com/a/4864170
-  #
-  context "#+" do
+  #     it "is invalid if the domain is not present" do
+  #       instance = described_class.new('/some/relative/path', domain: { public_suffix: true })
+  #       expect(instance).not_to be_valid
+  #     end
 
-    let(:link) { 'http://foo.com/zee/zaw/zoom.html' }
+  #     it "does nothing when applied to irrelevant attributes" do
+  #       instance = described_class.new('/some/relative/path', path: { public_suffix: true })
+  #       expect(instance).to be_valid
+  #     end
 
-    it "properly combines a url and and relative url" do
-      {
-        'http://zork.com/'                 => 'http://zork.com/',
-        'http://zork.com/#id'              => 'http://zork.com/#id',
-        'http://zork.com/bar'              => 'http://zork.com/bar',
-        'http://zork.com/bar#id'           => 'http://zork.com/bar#id',
-        'http://zork.com/bar/'             => 'http://zork.com/bar/',
-        'http://zork.com/bar/#id'          => 'http://zork.com/bar/#id',
-        'http://zork.com/bar/jim.html'     => 'http://zork.com/bar/jim.html',
-        'http://zork.com/bar/jim.html#id'  => 'http://zork.com/bar/jim.html#id',
-        '/bar'                             => 'http://foo.com/bar',
-        '/bar#id'                          => 'http://foo.com/bar#id',
-        '/bar/'                            => 'http://foo.com/bar/',
-        '/bar/#id'                         => 'http://foo.com/bar/#id',
-        '/bar/jim.html'                    => 'http://foo.com/bar/jim.html',
-        '/bar/jim.html#id'                 => 'http://foo.com/bar/jim.html#id',
-        'jim.html'                         => 'http://foo.com/zee/zaw/jim.html',
-        'jim.html#id'                      => 'http://foo.com/zee/zaw/jim.html#id',
-        '../jim.html'                      => 'http://foo.com/zee/jim.html',
-        '../jim.html#id'                   => 'http://foo.com/zee/jim.html#id',
-        '../'                              => 'http://foo.com/zee/',
-        '../#id'                           => 'http://foo.com/zee/#id',
-        '#id'                              => 'http://foo.com/zee/zaw/zoom.html#id'
-      }.each do |relative_url, expected_result|
-        instance = described_class.new(link)
-        expect((instance + relative_url).to_s).to eq expected_result
-      end
+  #   end
 
-    end
-
-    it "is aliased to #join" do
-      expect(instance.method(:join)).to eq instance.method(:+)
-    end
-
-  end
-
-  context "#hash" do
-
-    let(:link) { 'http://example.com/' }
-    let(:instance) { described_class.new(link) }
-
-    it "returns the SHA1 of the uri" do
-      expect(instance.hash).to eq Digest::SHA1.hexdigest(link)
-    end
-
-  end
-
-  context "#canonical" do
-
-    it "cleans the uri" do
-      instance = described_class.new('http://example.com/?utm_source%3Danalytics')
-      expect(instance.canonical).to eq 'http://example.com/'
-    end
-
-    it "normalizes the uri" do
-      instance = described_class.new('http://example.com/../')
-      expect(instance.canonical).to eq 'http://example.com/'
-    end
-
-    it "converts it into a naked domain" do
-      instance = described_class.new('http://www.example.com/')
-      expect(instance.canonical).to eq 'http://example.com/'
-    end
-
-  end
-
-  context "#valid?" do
-
-    context "by default" do
-
-      it "is true for absolute URIs" do
-        expect(absolute_uri).to be_valid
-      end
-
-      it "is true for relative URIs" do
-        expect(relative_uri).to be_valid
-      end
-
-      it "is true for IPv4 addresses" do
-        expect(ipv4).to be_valid
-      end
-
-      it "is true for IPv6 addresses" do
-        expect(ipv6).to be_valid
-      end
-
-    end
-
-    context "with custom validations" do
-
-      let(:instance) do
-        described_class.new('http://example.com', tld: { inclusion: { in: %w(net org) } })
-      end
-
-      it "are used to determine validity" do
-        instance.valid?
-        expect(instance.errors[:tld]).to include "is not included in the list"
-      end
-
-      it "apply on a case by case basis" do
-        instance.valid?
-        another_instance = described_class.new('http://example.com')
-        expect(another_instance).to be_valid
-      end
-
-    end
-
-    context "with the public suffix validator" do
-
-      it "is valid with a domain on the public suffix list" do
-        instance = described_class.new('http://example.com', domain: { public_suffix: true })
-        expect(instance).to be_valid
-      end
-
-      it "is invalid with a domain not on the public suffix list" do
-        instance = described_class.new('http://example.qqq', domain: { public_suffix: true })
-        expect(instance).not_to be_valid
-      end
-
-      it "is invalid if the domain is not present" do
-        instance = described_class.new('/some/relative/path', domain: { public_suffix: true })
-        expect(instance).not_to be_valid
-      end
-
-      it "does nothing when applied to irrelevant attributes" do
-        instance = described_class.new('/some/relative/path', path: { public_suffix: true })
-        expect(instance).to be_valid
-      end
-
-    end
-
-  end
+  # end
 
 end

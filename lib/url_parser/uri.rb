@@ -1,30 +1,34 @@
-require "resolv"
-require "active_support/core_ext/hash/slice"
-require "active_model"
-require "addressable/uri"
-require "digest/sha1"
-require "url_parser/validators/public_suffix"
-require "url_parser/parser"
+require 'forwardable'
+require 'resolv'
 
 module UrlParser
   class URI
-    include ActiveModel::Model
+    extend Forwardable
 
     LOCALHOST_REGEXP  = /(\A|\.)localhost\z/
 
     COMPONENTS = [
       :scheme,              # Top level URI naming structure / protocol.
       :username,            # Username portion of the userinfo.
+      :user,                # Alias for #username.
       :password,            # Password portion of the userinfo.
       :userinfo,            # URI username and password for authentication.
       :hostname,            # Fully qualified domain name or IP address.
+      :naked_hostname,      # Hostname without any ww? prefix.
       :port,                # Port number.
       :host,                # Hostname and port.
       :www,                 # The ww? portion of the subdomain.
       :tld,                 # Returns the top level domain portion, aka the extension.
+      :top_level_domain,    # Alias for #tld.
+      :extension,           # Alias for #tld.
       :sld,                 # Returns the second level domain portion, aka the domain part.
+      :second_level_domain, # Alias for #sld.
+      :domain_name,         # Alias for #sld.
       :trd,                 # Returns the third level domain portion, aka the subdomain part.
+      :third_level_domain,  # Alias for #trd.
+      :subdomains,          # Alias for #trd.
       :naked_trd,           # Any non-ww? subdomains.
+      :naked_subdomain,     # Alias for #naked_trd.
       :domain,              # The domain name with the tld.
       :subdomain,           # All subdomains, include ww?.
       :origin,              # Scheme and host.
@@ -42,60 +46,97 @@ module UrlParser
       :location             # Directory and resource - everything after the site.
     ]
 
-    ALIASES = [
-      :user,                # Alias for #username.
-      :top_level_domain,    # Alias for #tld.
-      :extension,           # Alias for #tld.
-      :second_level_domain, # Alias for #sld.
-      :domain_name,         # Alias for #sld.
-      :third_level_domain,  # Alias for #trd.
-      :subdomains,          # Alias for #trd.
-      :naked_subdomain      # Alias for #naked_trd.
-    ]
+    def_delegators :@model, *COMPONENTS
 
-    attr_reader :options, :errors, :original, :parser
+    def_delegator :'@model.parsed_domain', :labels
 
-    attr_accessor *COMPONENTS
+    attr_reader :input, :uri, :options
 
-    alias_method :user, :username
-    alias_method :top_level_domain, :tld
-    alias_method :extension, :tld
-    alias_method :second_level_domain, :sld
-    alias_method :domain_name, :sld
-    alias_method :third_level_domain, :trd
-    alias_method :subdomains, :trd
-    alias_method :naked_subdomain, :naked_trd
+    def initialize(uri, options = {}, &blk)
+      @input      = uri
+      @options    = set_options(options, &blk)
+      @block      = blk ? blk : block_builder
+      @uri        = UrlParser::Parser.call(@input, @options, &@block)
+      @model      = UrlParser::Model.new(@uri)
+    end
 
-    def initialize(uri, options = {})
-      @errors   = ActiveModel::Errors.new(self)
-      @options  = options
-      @original = uri
-      @parser   = parse(uri)
-      assign_components
+    def unescaped?
+      !!options[:unescape]
+    end
+
+    def parsed?
+      true
+    end
+
+    def unembedded?
+      !!options[:unembed]
+    end
+
+    def canonicalized?
+      !!options[:canonicalize]
+    end
+
+    def normalized?
+      !!options[:normalize]
     end
 
     def cleaned?
-      !!(options.fetch(:clean) { false })
+      !!options[:clean] || (
+        unescaped?      &&
+        parsed?         &&
+        unembedded?     &&
+        canonicalized?  &&
+        normalized?
+      )
+    end
+
+    def clean
+      if cleaned?
+        raw
+      else
+        UrlParser::Parser.call(@input, raw: true) { |uri| uri.clean! }
+      end
+    end
+
+    # Cleans and converts into a naked hostname
+    #
+    def canonical
+      opts = { default_scheme: scheme, raw: true }
+      curi = naked_hostname + location
+
+      UrlParser::Parser.call(curi, opts) { |uri| uri.clean! }
+    end
+
+    def clean?
+      cleaned? || self.to_s == clean
     end
 
     def relative?
-      parser.relative?
+      uri.relative?
     end
 
     def absolute?
-      parser.absolute?
+      uri.absolute?
     end
 
     def localhost?
-      !!(hostname =~ LOCALHOST_REGEXP)
+      !!(hostname[LOCALHOST_REGEXP])
+    end
+
+    def ipv4
+      hostname[Resolv::IPv4::Regex]
     end
 
     def ipv4?
-      !!(hostname =~ Resolv::IPv4::Regex)
+      !!ipv4
+    end
+
+    def ipv6
+      host[Resolv::IPv6::Regex]
     end
 
     def ipv6?
-      !!(host =~ Resolv::IPv6::Regex)
+      !!ipv6
     end
 
     def ip_address?
@@ -106,80 +147,59 @@ module UrlParser
       !localhost? && www.nil?
     end
 
-    def hash
-      Digest::SHA1.hexdigest(self.to_s)
+    def raw
+      uri.to_s
+    end
+    alias_method :to_s, :raw
+
+    def sha1
+      Digest::SHA1.hexdigest(raw)
+    end
+    alias_method :hash, :sha1
+
+    # TODO:
+    #   Comparing should consider http & https equivalent and
+    #   use the naked hostname
+    #
+    def ==(uri)
+      opts  = options.merge(raw: true)
+
+      clean == UrlParser::Parser.call(uri, opts) { |uri| uri.clean! }
     end
 
-    def to_s
-      parser.to_s
-    end
-
-    def +(value)
-      UrlParser::URI.new(Addressable::URI.join(self.to_s, value), options)
+    def +(uri)
+      self.class.new(uri, options.merge({ base_uri: self.to_s}), &@block)
     end
     alias_method :join, :+
 
-    # Cleans, normalizes, and converts into a naked domain, useful for comparing URIs.
-    #
-    def canonical
-      cleaned_uri = if cleaned?
-        parser.to_s
-      else
-        UrlParser::Parser.new(self.to_s, options.merge({ clean: true })).to_s
-      end
-      if www
-        cleaned_uri.sub(/\A#{Regexp.escape(scheme)}:\/\/#{www}\./, "#{scheme}://")
-      else
-        cleaned_uri
-      end
-    end
-
-    def ===(uri)
-      if uri.respond_to?(:canonical)
-        uri_string = uri.canonical
-      else
-        uri_string = UrlParser::URI.new(uri.to_s, options.merge({ clean: true })).canonical
-      end
-      canonical == uri_string
-    end
-
-    def ==(uri)
-      return false unless uri.kind_of?(UrlParser::URI)
-      canonical == uri.canonical
-    end
-
-    def valid?(context = nil)
-      validations.each do |attribute, validation_options|
-        singleton_class.class_eval { validates attribute, validation_options }
-      end
-      super(context)
-    end
+    # def valid?(context = nil)
+    #   validations.each do |attribute, validation_options|
+    #     singleton_class.class_eval { validates attribute, validation_options }
+    #   end
+    #   super(context)
+    # end
 
     private
 
-    def all_attribute_methods
-      COMPONENTS + ALIASES
+    def set_options(opts = {}, &blk)
+      UrlParser::OptionSetter
+        .new(opts, &blk)
+        .to_hash
+        .merge(raw: false)
     end
 
-    def parse(uri)
-      case uri.class
-      when UrlParser::URI
-        uri.parser
-      when UrlParser::Parser
-        uri
-      else
-        UrlParser::Parser.new(uri, options)
+    def block_builder
+      proc do |uri|
+        if cleaned?
+          uri.clean!
+        else
+          uri.unescape!     if unescaped?
+          uri.parse!        if parsed?
+          uri.unembed!      if unembedded?
+          uri.canonicalize! if canonicalized?
+          uri.normalize!    if normalized?
+        end
       end
-    end
-
-    def assign_components
-      COMPONENTS.each do |component|
-        self.public_send("#{component}=", parser.public_send(component))
-      end
-    end
-
-    def validations
-      options.slice(*all_attribute_methods)
     end
 
   end
