@@ -77,7 +77,9 @@ module UrlParser
           hostname  = parsed_uri.host || parts.first
           @domain   = UrlParser::Domain.new(hostname)
           if @domain.valid?
-            parsed_uri.path = '/' + parts.drop(1).join('/')
+            parsed_uri.path = '/' +
+              parts.drop(1).join('/') +
+              parsed_uri.path[/(?<=\/).*(\/)\s*$/, 1].to_s
             parsed_uri.host = @domain.name
           end
         end
