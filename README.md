@@ -8,7 +8,7 @@
 [![Test Coverage](https://img.shields.io/codeclimate/coverage/github/activefx/url_parser.svg?style=flat)](https://codeclimate.com/github/activefx/url_parser/coverage)
 [![Dependency Status](https://gemnasium.com/activefx/url_parser.svg)](https://gemnasium.com/activefx/url_parser)
 
-Extended URI parsing capabilities built on top of Addressable::URI. Parse URIs into granular components, unescape encoded characters, extract embedded URIs, normalize URIs, handle canonical url generation, and validate domains. Inspired by [PostRank-URI](https://github.com/postrank-labs/postrank-uri) and [URI.js](https://github.com/medialize/URI.js).
+Extended URI capabilities built on top of Addressable::URI. Parse URIs into granular components, unescape encoded characters, extract embedded URIs, normalize URIs, handle canonical url generation, and validate domains. Inspired by [PostRank-URI](https://github.com/postrank-labs/postrank-uri) and [URI.js](https://github.com/medialize/URI.js).
 
 ## Installation
 
