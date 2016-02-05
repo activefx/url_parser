@@ -23,10 +23,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "guard-rspec"
 
-  spec.add_dependency "gem_config"
-  spec.add_dependency "public_suffix", ">= 1.4", "< 2"
-  spec.add_dependency "postrank-uri", ">= 1.0.19", "< 2"
-  spec.add_dependency "addressable", ">= 2.3", "< 3"
-  spec.add_dependency "activemodel", ">= 4", "< 5"
-  spec.add_dependency "naught"
+  spec.add_dependency "gem_config", "~> 0.3"
+  spec.add_dependency "public_suffix", "~> 1.0"
+  spec.add_dependency "addressable", "~> 2.0"
 end

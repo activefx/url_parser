@@ -1,12 +1,12 @@
-# https://secure.wikimedia.org/wikipedia/en/wiki/URI_scheme
-
+require "yaml"
 require "gem_config"
 require "addressable/uri"
 require "url_parser/version"
+require "url_parser/option_setter"
 require "url_parser/domain"
+require "url_parser/model"
 require "url_parser/parser"
 require "url_parser/uri"
-require "url_parser/url"
 
 module UrlParser
   include GemConfig::Base
@@ -18,6 +18,13 @@ module UrlParser
   end
 
   module Error; end
+
+  class LibraryError < StandardError
+    include Error
+  end
+
+  RequiresAddressableURI  = Class.new(LibraryError)
+  RequiresUrlParserDomain = Class.new(LibraryError)
 
   DB = YAML.load_file(File.join(File.dirname(__FILE__), '/url_parser/db.yml'))
 
