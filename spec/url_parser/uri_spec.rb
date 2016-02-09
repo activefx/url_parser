@@ -345,29 +345,34 @@ RSpec.describe UrlParser::URI do
 
   end
 
-  # context "#canonical" do
+  context "#canonical" do
 
-  #   it "cleans the uri", :focus do
-  #     instance = described_class.new('http://example.com/?utm_source%3Danalytics')
-  #     expect(instance.canonical).to eq 'http://example.com/'
-  #   end
+    it "cleans the uri" do
+      instance = described_class.new('http://example.com/?utm_source%3Danalytics')
+      expect(instance.canonical).to eq '//example.com/'
+    end
 
-  #   it "normalizes the uri" do
-  #     instance = described_class.new('http://example.com/../')
-  #     expect(instance.canonical).to eq 'http://example.com/'
-  #   end
+    it "strips the scheme" do
+      instance = described_class.new('https://example.com/')
+      expect(instance.canonical).to eq '//example.com/'
+    end
 
-  #   it "converts it into a naked domain" do
-  #     instance = described_class.new('http://www.example.com/')
-  #     expect(instance.canonical).to eq 'http://example.com/'
-  #   end
+    it "normalizes the uri" do
+      instance = described_class.new('http://example.com/../')
+      expect(instance.canonical).to eq '//example.com/'
+    end
 
-  #   it "preserves the scheme" do
-  #     instance = described_class.new('https://www.example.com/')
-  #     expect(instance.canonical).to eq 'https://example.com/'
-  #   end
+    it "converts it into a naked domain" do
+      instance = described_class.new('http://www.example.com/')
+      expect(instance.canonical).to eq '//example.com/'
+    end
 
-  # end
+    it "preserves the scheme" do
+      instance = described_class.new('https://www.example.com/')
+      expect(instance.canonical).to eq '//example.com/'
+    end
+
+  end
 
   context "#relative?" do
 
@@ -515,73 +520,51 @@ RSpec.describe UrlParser::URI do
       ).to be true
     end
 
+    it "does not ignore scheme" do
+      expect(
+        described_class.new('http://example.com/') == 'https://example.com'
+      ).to be false
+    end
+
   end
 
-  # context "#valid?" do
+  context "#=~" do
 
-  #   context "by default" do
+    it "ignores scheme with the :ignore_scheme option" do
+      expect(
+        described_class.new('http://example.com/') =~ 'https://example.com'
+      ).to be true
+    end
 
-  #     it "is true for absolute URIs" do
-  #       expect(absolute_uri).to be_valid
-  #     end
+  end
 
-  #     it "is true for relative URIs" do
-  #       expect(relative_uri).to be_valid
-  #     end
+  context "#valid?" do
 
-  #     it "is true for IPv4 addresses" do
-  #       expect(ipv4).to be_valid
-  #     end
+    context "by default" do
 
-  #     it "is true for IPv6 addresses" do
-  #       expect(ipv6).to be_valid
-  #     end
+      it "is true for absolute URIs" do
+        expect(instance).to be_valid
+      end
 
-  #   end
+      it "is false for relative URIs" do
+        expect(relative_uri).not_to be_valid
+      end
 
-  #   context "with custom validations" do
+      it "is true for IPv4 addresses" do
+        expect(ipv4).to be_valid
+      end
 
-  #     let(:instance) do
-  #       described_class.new('http://example.com', tld: { inclusion: { in: %w(net org) } })
-  #     end
+      it "is true for IPv6 addresses" do
+        expect(ipv6).to be_valid
+      end
 
-  #     it "are used to determine validity" do
-  #       instance.valid?
-  #       expect(instance.errors[:tld]).to include "is not included in the list"
-  #     end
+      it "is false with a domain not on the public suffix list" do
+        instance = described_class.new('http://example.qqq')
+        expect(instance).not_to be_valid
+      end
 
-  #     it "apply on a case by case basis" do
-  #       instance.valid?
-  #       another_instance = described_class.new('http://example.com')
-  #       expect(another_instance).to be_valid
-  #     end
+    end
 
-  #   end
-
-  #   context "with the public suffix validator" do
-
-  #     it "is valid with a domain on the public suffix list" do
-  #       instance = described_class.new('http://example.com', domain: { public_suffix: true })
-  #       expect(instance).to be_valid
-  #     end
-
-  #     it "is invalid with a domain not on the public suffix list" do
-  #       instance = described_class.new('http://example.qqq', domain: { public_suffix: true })
-  #       expect(instance).not_to be_valid
-  #     end
-
-  #     it "is invalid if the domain is not present" do
-  #       instance = described_class.new('/some/relative/path', domain: { public_suffix: true })
-  #       expect(instance).not_to be_valid
-  #     end
-
-  #     it "does nothing when applied to irrelevant attributes" do
-  #       instance = described_class.new('/some/relative/path', path: { public_suffix: true })
-  #       expect(instance).to be_valid
-  #     end
-
-  #   end
-
-  # end
+  end
 
 end

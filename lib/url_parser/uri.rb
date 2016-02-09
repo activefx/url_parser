@@ -48,7 +48,8 @@ module UrlParser
 
     def_delegators :@model, *COMPONENTS
 
-    def_delegator :'@model.parsed_domain', :labels
+    def_delegator :@model, :parsed_domain
+    def_delegator :parsed_domain, :labels
 
     attr_reader :input, :uri, :options
 
@@ -101,10 +102,12 @@ module UrlParser
     # Cleans and converts into a naked hostname
     #
     def canonical
-      opts = { default_scheme: scheme, raw: true }
+      opts = { raw: true }
       curi = naked_hostname + location
 
-      UrlParser::Parser.call(curi, opts) { |uri| uri.clean! }
+      UrlParser::Parser.call(curi, opts) do |uri|
+        uri.clean!
+      end.sub(/\A[a-z]+:\/\//i, '//')
     end
 
     def clean?
@@ -120,11 +123,11 @@ module UrlParser
     end
 
     def localhost?
-      !!(hostname[LOCALHOST_REGEXP])
+      !!(hostname.to_s[LOCALHOST_REGEXP])
     end
 
     def ipv4
-      hostname[Resolv::IPv4::Regex]
+      hostname.to_s[Resolv::IPv4::Regex]
     end
 
     def ipv4?
@@ -132,7 +135,7 @@ module UrlParser
     end
 
     def ipv6
-      host[Resolv::IPv6::Regex]
+      host.to_s[Resolv::IPv6::Regex]
     end
 
     def ipv6?
@@ -157,14 +160,12 @@ module UrlParser
     end
     alias_method :hash, :sha1
 
-    # TODO:
-    #   Comparing should consider http & https equivalent and
-    #   use the naked hostname
-    #
     def ==(uri)
-      opts  = options.merge(raw: true)
+      clean == self.class.new(uri, clean: true).clean
+    end
 
-      clean == UrlParser::Parser.call(uri, opts) { |uri| uri.clean! }
+    def =~(uri)
+      canonical == self.class.new(uri, clean: true).canonical
     end
 
     def +(uri)
@@ -172,12 +173,11 @@ module UrlParser
     end
     alias_method :join, :+
 
-    # def valid?(context = nil)
-    #   validations.each do |attribute, validation_options|
-    #     singleton_class.class_eval { validates attribute, validation_options }
-    #   end
-    #   super(context)
-    # end
+    def valid?
+      return false if input.nil? || relative?
+      return true if ip_address? || localhost?
+      parsed_domain.valid?
+    end
 
     private
 
