@@ -204,17 +204,29 @@ module UrlParser
     # Path, query, and fragment.
     #
     def resource
-      name = [
-        [ segment, query ].compact.join('?'), fragment
-      ].compact.join('#')
+      name = [ segment, query_string, fragment_string ].compact.join
       name.empty? ? nil : name
     end
 
     # Directory and resource - everything after the site.
     #
     def location
-      result = [ directory, resource ].compact.join('/')
-      result.empty? ? nil : result
+      if directory == '/'
+        directory + resource.to_s
+      else
+        result = [ directory, resource ].compact.join('/')
+        result.empty? ? nil : result
+      end
+    end
+
+    private
+
+    def query_string
+      query ? "?#{query}" : nil
+    end
+
+    def fragment_string
+      fragment ? "##{fragment}" : nil
     end
 
   end

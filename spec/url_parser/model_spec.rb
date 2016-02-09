@@ -337,6 +337,12 @@ RSpec.describe UrlParser::Model do
         expect(instance.location).to eq '/hello/world/there.html?name=ferret#foo'
       end
 
+      it "handles query only locations" do
+        uri = Addressable::URI.parse 'http://example.com/?utm_source%3Danalytics'
+        instance = described_class.new(uri)
+        expect(instance.location).to eq '/?utm_source%3Danalytics'
+      end
+
     end
 
   end
