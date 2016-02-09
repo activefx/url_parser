@@ -27,7 +27,6 @@ module UrlParser
       :uri,
       :domain,
       :default_scheme,
-      :embedded_params,
       :options
 
     def initialize(uri, options = {})
@@ -46,6 +45,10 @@ module UrlParser
 
     def base_uri
       (@base_uri ? @base_uri : uri).to_s
+    end
+
+    def embedded_params
+      UrlParser.wrap(@embedded_params)
     end
 
     def raw?
@@ -101,14 +104,8 @@ module UrlParser
     def unembed
       original = parse
 
-      param_keys = if embedded_params.empty?
-        UrlParser.configuration.embedded_params
-      else
-        UrlParser.wrap(embedded_params)
-      end
-
       candidates = original.query_values.select do |key, value|
-        param_keys.include?(key) &&
+        embedded_params.include?(key) &&
         value =~ Addressable::URI::URIREGEX
       end.values if original.query_values
 

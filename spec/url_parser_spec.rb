@@ -89,4 +89,13 @@ RSpec.describe UrlParser do
 
   end
 
+  context ".wrap" do
+
+    it "converts nil to an array" do
+      expect(described_class.wrap(nil)).to eq([])
+    end
+
+  end
+
+
 end

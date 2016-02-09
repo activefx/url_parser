@@ -41,7 +41,7 @@ RSpec.describe UrlParser::Parser do
 
       it "accepts an :embedded_params option" do
         expect(described_class.new('#', embedded_params: 'ref').embedded_params)
-          .to eq 'ref'
+          .to eq [ 'ref' ]
       end
 
     end
@@ -133,7 +133,7 @@ RSpec.describe UrlParser::Parser do
 
   end
 
-  context ".parse!" do
+  context "#parse!" do
 
     let(:instance) { described_class.new(url) }
 
@@ -156,7 +156,7 @@ RSpec.describe UrlParser::Parser do
 
   end
 
-  context ".unescape" do
+  context "#unescape" do
 
     let(:instance) { described_class.new('http://example.com/path?id%3D1') }
 
@@ -174,7 +174,7 @@ RSpec.describe UrlParser::Parser do
 
   end
 
-  context ".unescape!" do
+  context "#unescape!" do
 
     let(:instance) { described_class.new('http://example.com/path?id%3D1') }
 
@@ -197,7 +197,7 @@ RSpec.describe UrlParser::Parser do
 
   end
 
-  context ".unembed" do
+  context "#unembed" do
 
     it "extracts an embedded url from a 'u' param" do
       url = 'http://www.myspace.com/Modules/PostTo/Pages/?u=http%3A%2F%2Fexample.com%2Fnews'
@@ -229,7 +229,7 @@ RSpec.describe UrlParser::Parser do
 
   end
 
-  context ".unembed!" do
+  context "#unembed!" do
 
     let(:instance) { described_class.new('http://energy.gov/exit?url=https%3A//twitter.com/energy') }
 
@@ -309,7 +309,7 @@ RSpec.describe UrlParser::Parser do
 
   end
 
-  context ".normalize!" do
+  context "#normalize!" do
 
     let(:instance) { described_class.new('http://example.com///') }
 
@@ -332,7 +332,7 @@ RSpec.describe UrlParser::Parser do
 
   end
 
-  context ".canonicalize" do
+  context "#canonicalize" do
 
     let(:instance) { described_class.new('https://wikipedia.org/?source=ABCD&utm_source=EFGH') }
 

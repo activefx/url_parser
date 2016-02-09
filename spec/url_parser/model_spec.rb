@@ -24,6 +24,12 @@ RSpec.describe UrlParser::Model do
         .to raise_error UrlParser::RequiresAddressableURI
     end
 
+    it "requires a UrlParser::Domain as the second argument" do
+      uri = Addressable::URI.parse('http://example.com/')
+      expect{ described_class.new(uri, 'example.com') }
+        .to raise_error UrlParser::RequiresUrlParserDomain
+    end
+
     context "parsed_uri" do
 
       it "sets the argument as #parsed_uri" do
