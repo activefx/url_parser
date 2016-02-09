@@ -28,9 +28,9 @@ module UrlParser
 
   DB = YAML.load_file(File.join(File.dirname(__FILE__), '/url_parser/db.yml'))
 
-  def self.new(url, options = {})
+  def self.new(uri, options = {})
     warn "[DEPRECATION] `.new` is deprecated. Please use `.parse` instead."
-    parse(url, options)
+    parse(uri, options)
   end
 
   module_function
@@ -82,8 +82,24 @@ module UrlParser
     str.valid_encoding? ? str : str.force_encoding(string.encoding)
   end
 
-  def parse(url, options = {})
-    URI.new(url, options)
+  def parse(uri, options = {}, &blk)
+    URI.new(uri, options, &blk)
+  end
+
+  def unembed(uri, options = {}, &blk)
+    URI.new(uri, options.merge(unembed: true), &blk)
+  end
+
+  def canonicalize(uri, options = {}, &blk)
+    URI.new(uri, options.merge(canonicalize: true), &blk)
+  end
+
+  def normalize(uri, options = {}, &blk)
+    URI.new(uri, options.merge(normalize: true), &blk)
+  end
+
+  def clean(uri, options = {}, &blk)
+    URI.new(uri, options.merge(clean: true), &blk)
   end
 
   # Wraps its argument in an array unless it is already an array

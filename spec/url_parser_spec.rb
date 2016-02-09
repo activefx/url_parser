@@ -37,14 +37,6 @@ RSpec.describe UrlParser do
 
   end
 
-  context ".parse" do
-
-    it "returns an instance of UrlParser::URI" do
-      expect(described_class.parse('http://example.com')).to be_a UrlParser::URI
-    end
-
-  end
-
   context ".escape" do
 
     it "encodes a string" do
@@ -89,6 +81,66 @@ RSpec.describe UrlParser do
 
   end
 
+  context ".parse" do
+
+    it "returns an instance of UrlParser::URI" do
+      expect(described_class.parse('http://example.com')).to be_a UrlParser::URI
+    end
+
+  end
+
+  context ".unembed" do
+
+    it "returns an instance of UrlParser::URI" do
+      expect(described_class.unembed('http://example.com')).to be_a UrlParser::URI
+    end
+
+    it "parses the URI with the :unembed option enabled" do
+      expect(UrlParser::URI).to receive(:new).with('#', hash_including(unembed: true))
+      described_class.unembed('#')
+    end
+
+  end
+
+  context ".canonicalize" do
+
+    it "returns an instance of UrlParser::URI" do
+      expect(described_class.canonicalize('http://example.com')).to be_a UrlParser::URI
+    end
+
+    it "parses the URI with the :canonicalize option enabled" do
+      expect(UrlParser::URI).to receive(:new).with('#', hash_including(canonicalize: true))
+      described_class.canonicalize('#')
+    end
+
+  end
+
+  context ".normalize" do
+
+    it "returns an instance of UrlParser::URI" do
+      expect(described_class.normalize('http://example.com')).to be_a UrlParser::URI
+    end
+
+    it "parses the URI with the :normalize option enabled" do
+      expect(UrlParser::URI).to receive(:new).with('#', hash_including(normalize: true))
+      described_class.normalize('#')
+    end
+
+  end
+
+  context ".clean" do
+
+    it "returns an instance of UrlParser::URI" do
+      expect(described_class.clean('http://example.com')).to be_a UrlParser::URI
+    end
+
+    it "parses the URI with the :clean option enabled" do
+      expect(UrlParser::URI).to receive(:new).with('#', hash_including(clean: true))
+      described_class.clean('#')
+    end
+
+  end
+
   context ".wrap" do
 
     it "converts nil to an array" do
@@ -96,6 +148,5 @@ RSpec.describe UrlParser do
     end
 
   end
-
 
 end
