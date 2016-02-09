@@ -168,7 +168,7 @@ module UrlParser
     end
 
     def +(uri)
-      self.class.new(uri, options.merge({ base_uri: self.to_s}), &@block)
+      self.class.new(uri.to_s, options.merge({ base_uri: self.to_s}), &@block)
     end
     alias_method :join, :+
 
