@@ -27,6 +27,7 @@ module UrlParser
       :uri,
       :domain,
       :default_scheme,
+      :scheme_map,
       :options
 
     def initialize(uri, options = {})
@@ -38,6 +39,9 @@ module UrlParser
                           }
       @embedded_params  = options.delete(:embedded_params) {
                             UrlParser.configuration.embedded_params
+                          }
+      @scheme_map       = options.delete(:scheme_map) {
+                            UrlParser.configuration.scheme_map
                           }
       @raw              = options.delete(:raw) { false }
       @options          = options
@@ -85,6 +89,10 @@ module UrlParser
               parsed_uri.path[/(?<=\/).*(\/)\s*$/, 1].to_s
             parsed_uri.host = @domain.name
           end
+        end
+
+        if scheme_map.has_key?(parsed_uri.scheme)
+          parsed_uri.scheme = scheme_map[parsed_uri.scheme]
         end
 
         if parsed_uri.host && !parsed_uri.scheme

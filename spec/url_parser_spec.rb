@@ -6,6 +6,43 @@ RSpec.describe UrlParser do
     expect(UrlParser::VERSION).not_to be_nil
   end
 
+  context "configuration" do
+
+    context ":embedded_params" do
+
+      it "sets the unembed param keys" do
+        described_class.configuration.embedded_params = [ 'ref' ]
+        uri = UrlParser.unembed('https://www.upwork.com/leaving?ref=https%3A%2F%2Fwww.example.com')
+        expect(uri.to_s).to eq 'https://www.example.com/'
+        described_class.configuration.reset
+      end
+
+    end
+
+    context ":default_scheme" do
+
+      it "sets a default scheme if one is not present" do
+        described_class.configuration.default_scheme = 'https'
+        uri = UrlParser.parse('example.com')
+        expect(uri.to_s).to eq 'https://example.com/'
+        described_class.configuration.reset
+      end
+
+    end
+
+    context ":scheme_map" do
+
+      it "replaces scheme keys in the map with the corresponding value" do
+        described_class.configuration.scheme_map = { 'feed' => 'http' }
+        uri = UrlParser.parse('feed://feeds.feedburner.com/YourBlog')
+        expect(uri.to_s).to eq 'http://feeds.feedburner.com/YourBlog'
+        described_class.configuration.reset
+      end
+
+    end
+
+  end
+
   context ".tag_errors" do
 
     it "tags StandardError exceptions" do

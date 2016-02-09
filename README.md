@@ -70,7 +70,7 @@ uri.location            #=> '/hello/world/there.html?name=ferret#foo'
 
 ### Parse 
 
-Parse takes the provided URI and breaks it down into its component parts. To see a full list components provided, see [URI Data Model](#URI-Data-Model). If you provide an instance of Addressable::URI, it will consider the URI already parsed. 
+Parse takes the provided URI and breaks it down into its component parts. To see a full list components provided, see [URI Data Model](#uri-data-model). If you provide an instance of Addressable::URI, it will consider the URI already parsed. 
 
 ```ruby```
 uri = UrlParser.parse('http://example.org/foo?bar=baz')
@@ -224,11 +224,13 @@ uri.ipv6 #=> returns IPv6 address if applicable
 
 # UrlParser::URI#relative? 
 uri = UrlParser.parse('/')
-uri.relative?       #=> true 
+uri.relative?       
+#=> true 
 
 # UrlParser::URI#absolute? 
 uri = UrlParser.parse('http://example.com/')
-uri.absolute?       #=> true 
+uri.absolute?       
+#=> true 
 
 # UrlParser::URI#clean - return a cleaned string 
 uri = UrlParser.parse('http://example.com/?utm_source=google')
@@ -265,7 +267,52 @@ uri =~ 'https://example.com/'
 
 # UrlParser::URI#valid? - checks if URI is absolute and domain is valid 
 uri = UrlParser.parse('http://example.qqq/')
-uri.valid?          #=> false 
+uri.valid?          
+#=> false 
+```
+
+## Configuration 
+
+### embedded_params
+
+Set the params the unembed parser uses to search for embedded URIs. Default is `[ 'u', 'url ]`. Set to an empty array to disable unembedding. 
+
+```ruby 
+UrlParser.configure do |config|
+  config.embedded_params = [ 'ref' ]
+end
+
+uri = UrlParser.unembed('https://www.upwork.com/leaving?ref=https%3A%2F%2Fwww.example.com')
+uri.to_s 
+#=> "https://www.example.com/"
+```
+
+### default_scheme 
+
+Set a default scheme if one is not present. Can also be set to nil if there should not be a default scheme. Default is `'http'`.
+
+```ruby 
+UrlParser.configure do |config|
+  config.default_scheme = 'https'
+end
+
+uri = UrlParser.parse('example.com')
+uri.to_s 
+#=> "https://example.com/"
+```
+
+### scheme_map 
+
+Replace scheme keys in the 'map' with the corresponding value. Useful for replacing invalid or outdated schemes. Default is an empty hash. 
+
+```ruby 
+UrlParser.configure do |config|
+  config.scheme_map = { 'feed' => 'http' }
+end
+
+uri = UrlParser.parse('feed://feeds.feedburner.com/YourBlog')
+uri.to_s 
+#=> "http://feeds.feedburner.com/YourBlog"
 ```
 
 ## TODO
