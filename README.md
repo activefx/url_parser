@@ -72,7 +72,7 @@ uri.location            #=> '/hello/world/there.html?name=ferret#foo'
 
 Parse takes the provided URI and breaks it down into its component parts. To see a full list components provided, see [URI Data Model](#uri-data-model). If you provide an instance of Addressable::URI, it will consider the URI already parsed. 
 
-```ruby```
+```ruby
 uri = UrlParser.parse('http://example.org/foo?bar=baz')
 uri.class 
 #=> UrlParser::URI
@@ -237,7 +237,7 @@ uri = UrlParser.parse('http://example.com/?utm_source=google')
 uri.clean 
 #=> "http://example.com/"
 
-# UrlParser::URI#canonical - cleans and strips the scheme 
+# UrlParser::URI#canonical - cleans and strips the scheme and ww? subdomain
 uri = UrlParser.parse('http://example.com/?utm_source%3Danalytics')
 uri.canonical
 #=> "//example.com/"
