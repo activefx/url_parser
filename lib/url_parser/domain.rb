@@ -31,13 +31,13 @@ module UrlParser
     end
 
     def labels
-      PublicSuffix::Domain.domain_to_labels(name)
+      PublicSuffix::Domain.name_to_labels(name).reverse
     end
 
     def suffix
       @suffix = begin
-        PublicSuffix.parse(name)
-      rescue
+        PublicSuffix.parse(name, default_rule: nil)
+      rescue PublicSuffix::DomainInvalid
         self.errors << "'#{original}' is not a valid domain"
         OpenStruct.new(SUFFIX_DEFAULTS).tap do |os|
           os.instance_eval('undef to_s')

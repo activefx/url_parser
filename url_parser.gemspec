@@ -24,6 +24,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "guard-rspec"
 
   spec.add_dependency "gem_config"
-  spec.add_dependency "public_suffix"
-  spec.add_dependency "addressable"
+  spec.add_dependency "public_suffix", "< 4.0", ">= 3.0.0"
+  spec.add_dependency "addressable", "< 3", ">= 2.4.0"
 end

@@ -125,9 +125,10 @@ RSpec.describe UrlParser::Domain do
       expect(instance.errors).to include "'//' is not a valid domain"
     end
 
-    it "is true with 127 labels or less" do
-      instance = described_class.new('.'*126+'com')
-      expect(instance).to be_valid
+    it "is false when exceeding 253 ASCII characters" do
+      instance = described_class.new(('a'*61+'.')*4+'aaa.com')
+      expect(instance).not_to be_valid
+      expect(instance.errors).to include "exceeds 253 ASCII characters"
     end
 
     it "is false when exceeding 127 labels" do
