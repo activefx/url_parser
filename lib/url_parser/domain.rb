@@ -39,9 +39,7 @@ module UrlParser
         PublicSuffix.parse(name, default_rule: nil)
       rescue PublicSuffix::DomainInvalid
         self.errors << "'#{original}' is not a valid domain"
-        OpenStruct.new(SUFFIX_DEFAULTS).tap do |os|
-          os.instance_eval('undef to_s')
-        end
+        OpenStruct.new(SUFFIX_DEFAULTS)
       end
     end
 

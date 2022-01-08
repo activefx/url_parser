@@ -1,10 +1,6 @@
 # UrlParser
 
 [![Gem Version](https://img.shields.io/gem/v/url_parser.svg?style=flat)](https://rubygems.org/gems/url_parser)
-[![Build Status](https://img.shields.io/travis/activefx/url_parser.svg?style=flat)](http://travis-ci.org/activefx/url_parser)
-[![Code Climate](https://img.shields.io/codeclimate/github/activefx/url_parser.svg?style=flat)](https://codeclimate.com/github/activefx/url_parser)
-[![Test Coverage](https://img.shields.io/codeclimate/coverage/github/activefx/url_parser.svg?style=flat)](https://codeclimate.com/github/activefx/url_parser/coverage)
-[![Dependency Status](https://gemnasium.com/activefx/url_parser.svg)](https://gemnasium.com/activefx/url_parser)
 
 Extended URI capabilities built on top of Addressable::URI. Parse URIs into granular components, unescape encoded characters, extract embedded URIs, normalize URIs, handle canonical url generation, and validate domains. Inspired by [PostRank-URI](https://github.com/postrank-labs/postrank-uri) and [URI.js](https://github.com/medialize/URI.js).
 
@@ -68,25 +64,25 @@ uri.location            #=> '/hello/world/there.html?name=ferret#foo'
 
 ## Usage
 
-### Parse 
+### Parse
 
-Parse takes the provided URI and breaks it down into its component parts. To see a full list components provided, see [URI Data Model](#uri-data-model). If you provide an instance of Addressable::URI, it will consider the URI already parsed. 
+Parse takes the provided URI and breaks it down into its component parts. To see a full list components provided, see [URI Data Model](#uri-data-model). If you provide an instance of Addressable::URI, it will consider the URI already parsed.
 
 ```ruby
 uri = UrlParser.parse('http://example.org/foo?bar=baz')
-uri.class 
+uri.class
 #=> UrlParser::URI
 ```
 
-Unembed, canonicalize, normalize, and clean all rely on parse. 
+Unembed, canonicalize, normalize, and clean all rely on parse.
 
-### Unembed 
+### Unembed
 
-Unembed searches the provided URI's query values for redirection urls. By default, it searches the `u` and `url` params, however you can configure custom params to search. 
+Unembed searches the provided URI's query values for redirection urls. By default, it searches the `u` and `url` params, however you can configure custom params to search.
 
-```ruby 
+```ruby
 uri = UrlParser.unembed('http://energy.gov/exit?url=https%3A//twitter.com/energy')
-uri.to_s 
+uri.to_s
 #=> "https://twitter.com/energy"
 ```
 
@@ -94,43 +90,43 @@ With custom embedded params keys:
 
 ```ruby
 uri = UrlParser.unembed('https://www.upwork.com/leaving?ref=https%3A%2F%2Fwww.example.com', embedded_params: [ 'u', 'url', 'ref' ])
-uri.to_s 
+uri.to_s
 #=> "https://www.example.com/"
 ```
 
 ### Canonicalize
 
-Canonicalize applies filters on param keys to remove common tracking params, attempting to make it easier to identify duplicate URIs. For a full list of params, see `db.yml`. 
+Canonicalize applies filters on param keys to remove common tracking params, attempting to make it easier to identify duplicate URIs. For a full list of params, see `db.yml`.
 
 ```ruby
 uri = UrlParser.canonicalize('https://en.wikipedia.org/wiki/Ruby_(programming_language)?source=ABCD&utm_source=EFGH')
-uri.to_s 
+uri.to_s
 #=> "https://en.wikipedia.org/wiki/Ruby_(programming_language)?"
 ```
 
-### Normalize 
+### Normalize
 
-Normalize standardizes paths, query strings, anchors, whitespace, hostnames, and trailing slashes. 
+Normalize standardizes paths, query strings, anchors, whitespace, hostnames, and trailing slashes.
 
-```ruby 
+```ruby
 # Normalize paths
 uri = UrlParser.normalize('http://example.com/a/b/../../')
-uri.to_s 
+uri.to_s
 #=> "http://example.com/"
 
 # Normalize query strings
 uri = UrlParser.normalize('http://example.com/?')
-uri.to_s 
+uri.to_s
 #=> "http://example.com/"
 
 # Normalize anchors
 uri = UrlParser.normalize('http://example.com/#test')
-uri.to_s 
+uri.to_s
 #=> "http://example.com/"
 
 # Normalize whitespace
 uri = UrlParser.normalize('http://example.com/a/../? #test')
-uri.to_s 
+uri.to_s
 #=> "http://example.com/"
 
 # Normalize hostnames
@@ -144,23 +140,23 @@ uri.to_s
 #=> "http://example.com/a/b"
 ```
 
-### Clean 
+### Clean
 
-Clean combines parsing, unembedding, canonicalization, and normalization into a single call. It is designed to provide a method for cross-referencing identical urls. 
+Clean combines parsing, unembedding, canonicalization, and normalization into a single call. It is designed to provide a method for cross-referencing identical urls.
 
 ```ruby
 uri = UrlParser.clean('http://example.com/a/../?url=https%3A//💩.la/&utm_source=google')
-uri.to_s 
+uri.to_s
 #=> "https://xn--ls8h.la/"
 
 uri = UrlParser.clean('https://en.wikipedia.org/wiki/Ruby_(programming_language)?source=ABCD&utm_source%3Danalytics')
-uri.to_s 
+uri.to_s
 #=> "https://en.wikipedia.org/wiki/Ruby_(programming_language)"
 ```
 
-## UrlParser::URI 
+## UrlParser::URI
 
-Parsing a URI with UrlParser returns an instance of `UrlParser::URI`, with the following methods available: 
+Parsing a URI with UrlParser returns an instance of `UrlParser::URI`, with the following methods available:
 
 ### URI Data Model
 
@@ -205,36 +201,36 @@ Parsing a URI with UrlParser returns an instance of `UrlParser::URI`, with the f
 
 ### Additional URI Methods
 
-```ruby 
+```ruby
 uri = UrlParser.clean('#')
 uri.unescaped?      #=> true
-uri.parsed?         #=> true 
-uri.unembedded?     #=> true 
+uri.parsed?         #=> true
+uri.unembedded?     #=> true
 uri.canonicalized?  #=> true
 uri.normalized?     #=> true
-uri.cleaned?        #=> true 
+uri.cleaned?        #=> true
 
-# IP / localhost methods 
-uri.localhost? 
+# IP / localhost methods
+uri.localhost?
 uri.ip_address?
 uri.ipv4?
-uri.ipv6? 
-uri.ipv4 #=> returns IPv4 address if applicable 
-uri.ipv6 #=> returns IPv6 address if applicable 
+uri.ipv6?
+uri.ipv4 #=> returns IPv4 address if applicable
+uri.ipv6 #=> returns IPv6 address if applicable
 
-# UrlParser::URI#relative? 
+# UrlParser::URI#relative?
 uri = UrlParser.parse('/')
-uri.relative?       
-#=> true 
+uri.relative?
+#=> true
 
-# UrlParser::URI#absolute? 
+# UrlParser::URI#absolute?
 uri = UrlParser.parse('http://example.com/')
-uri.absolute?       
-#=> true 
+uri.absolute?
+#=> true
 
-# UrlParser::URI#clean - return a cleaned string 
+# UrlParser::URI#clean - return a cleaned string
 uri = UrlParser.parse('http://example.com/?utm_source=google')
-uri.clean 
+uri.clean
 #=> "http://example.com/"
 
 # UrlParser::URI#canonical - cleans and strips the scheme and ww? subdomain
@@ -248,70 +244,70 @@ joined_uri = uri + '/bar#id'
 joined_uri.to_s
 #=> "http://foo.com/bar#id"
 
-# UrlParser::URI #raw / #to_s - return the URI as a string 
+# UrlParser::URI #raw / #to_s - return the URI as a string
 uri = UrlParser.parse('http://example.com/')
-uri.raw 
+uri.raw
 #=> "http://example.com/"
 
-# Compare URIs 
-# Taking into account the scheme: 
+# Compare URIs
+# Taking into account the scheme:
 uri = UrlParser.parse('http://example.com/a/../?')
 uri == 'http://example.com/'
-#=> true 
+#=> true
 uri == 'https://example.com/'
 #=> false
 
-# Ignoring the scheme: 
+# Ignoring the scheme:
 uri =~ 'https://example.com/'
 #=> true
 
-# UrlParser::URI#valid? - checks if URI is absolute and domain is valid 
+# UrlParser::URI#valid? - checks if URI is absolute and domain is valid
 uri = UrlParser.parse('http://example.qqq/')
-uri.valid?          
-#=> false 
+uri.valid?
+#=> false
 ```
 
-## Configuration 
+## Configuration
 
 ### embedded_params
 
-Set the params the unembed parser uses to search for embedded URIs. Default is `[ 'u', 'url ]`. Set to an empty array to disable unembedding. 
+Set the params the unembed parser uses to search for embedded URIs. Default is `[ 'u', 'url ]`. Set to an empty array to disable unembedding.
 
-```ruby 
+```ruby
 UrlParser.configure do |config|
   config.embedded_params = [ 'ref' ]
 end
 
 uri = UrlParser.unembed('https://www.upwork.com/leaving?ref=https%3A%2F%2Fwww.example.com')
-uri.to_s 
+uri.to_s
 #=> "https://www.example.com/"
 ```
 
-### default_scheme 
+### default_scheme
 
 Set a default scheme if one is not present. Can also be set to nil if there should not be a default scheme. Default is `'http'`.
 
-```ruby 
+```ruby
 UrlParser.configure do |config|
   config.default_scheme = 'https'
 end
 
 uri = UrlParser.parse('example.com')
-uri.to_s 
+uri.to_s
 #=> "https://example.com/"
 ```
 
-### scheme_map 
+### scheme_map
 
-Replace scheme keys in the 'map' with the corresponding value. Useful for replacing invalid or outdated schemes. Default is an empty hash. 
+Replace scheme keys in the 'map' with the corresponding value. Useful for replacing invalid or outdated schemes. Default is an empty hash.
 
-```ruby 
+```ruby
 UrlParser.configure do |config|
   config.scheme_map = { 'feed' => 'http' }
 end
 
 uri = UrlParser.parse('feed://feeds.feedburner.com/YourBlog')
-uri.to_s 
+uri.to_s
 #=> "http://feeds.feedburner.com/YourBlog"
 ```
 

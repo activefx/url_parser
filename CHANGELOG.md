@@ -1,3 +1,8 @@
+v1.0.0 / TDB
+======================
+
+  * Requires Ruby 3, PublicSuffix 4, and Addressable 2.8 or greater. 
+
 v0.6.0 / 2017-08-29
 ======================
 

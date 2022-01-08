@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'uri'
 
 RSpec.describe UrlParser::Model do
 
