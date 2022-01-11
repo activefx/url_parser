@@ -160,8 +160,8 @@ module UrlParser
         end
 
         uri.query_values = uri.query_values(Array).tap do |params|
-          params.delete_if &matches_global_param
-          params.delete_if &matches_host_based_param
+          params.delete_if(&matches_global_param)
+          params.delete_if(&matches_host_based_param)
         end if uri.query_values
       end
     end
