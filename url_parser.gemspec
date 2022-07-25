@@ -23,6 +23,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec"
 
   spec.add_dependency "gem_config"
-  spec.add_dependency "public_suffix", "< 5.0", ">= 4.0.0"
-  spec.add_dependency "addressable", "< 3", ">= 2.8.0"
+  spec.add_dependency "public_suffix", "< 6", ">= 4.0"
+  spec.add_dependency "addressable", "< 4", ">= 2.8"
 end
